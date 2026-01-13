@@ -142,7 +142,7 @@ cjdh_frontier_capability_probe() {
     path="$(jq -r ".peers[$i].pathThemToUs // empty" "$tmp" 2>/dev/null || true)"
     [[ -n "$path" ]] || continue
     if cjdnstool -a "$addr" -p "$port" -P NONE cexec RouterModule_getPeers --path="$path" --timeout="$timeout_ms" 2>/dev/null \
-      | jq -e '.error == "none" and (.peers|type=="array")' >/dev/null 2>&1; then
+      | jq -e '((.error? == "none") or (.result? == "peers")) and (.peers|type=="array")' >/dev/null 2>&1; then
       ok="yes"
       break
     fi

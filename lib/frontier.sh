@@ -50,7 +50,7 @@ cjdh_frontier_expand() {
     [[ -n "$cjdh_route_path" ]] || continue
 
     cjdnstool -a "$addr" -p "$port" -P NONE cexec RouterModule_getPeers --path="$cjdh_route_path" --timeout="$timeout_ms" 2>/dev/null \
-      | jq -r 'select(.error=="none") | .peers[]?' 2>/dev/null \
+      | jq -r 'select(((.error?=="none") or (.result?=="peers")) and (.peers|type=="array")) | .peers[]?' 2>/dev/null \
       >>"$keys_full" || true
 
     done_paths=$((done_paths+1))
