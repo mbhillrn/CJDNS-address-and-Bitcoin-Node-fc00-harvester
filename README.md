@@ -27,7 +27,7 @@ Runtime files include:
 
 Dependency installation and notes:
 - Run or review: `./scripts/install_deps_ubuntu.sh`
-
+- Linux (tested on Ubuntu)
 ---
 
 ## Features
