@@ -2,7 +2,6 @@ As of: 2026-01-13
 
 KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
 == CONFIRMED BITCOIN NODES (confirmed.host) ==
-(Most recently confirmed first)
   fc55:6715:db3d:3f44:ec62:ea3d:ada9:cccb
   fc17:4369:5414:4b1f:5689:d3ed:4039:335c
   fc1f:22c3:95dc:a3af:4a93:8251:beb9:1858
@@ -38,7 +37,6 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc32:17ea:e415:c3bf:9808:149d:b5a2:c9aa
 
 == ALL DISCOVERED CJDNS ADDRESSES (master.host) ==
-(Most recently seen first)
   fc89:1969:a936:9d23:6f91:7ea5:a681:cfae
   fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9
   fc6e:26a4:5cfd:bbdc:e878:611c:fe21:af50
