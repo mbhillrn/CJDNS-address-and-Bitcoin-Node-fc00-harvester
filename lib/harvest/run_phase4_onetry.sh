@@ -53,13 +53,22 @@ log_info "Frontier: elapsed=$(( ${SECONDS:-0} - _t0 ))s"
 
   local total=0 new=0 existing=0
   while IFS= read -r host; do
-    host="${host,,}"
+    host="$(canon_host "$host")"
     [[ -n "$host" ]] || continue
+
     total=$((total+1))
 
     local now inserted
     now="$(date +%s)"
-    inserted="$(sqlite3 "$DB_PATH" "INSERT OR IGNORE INTO master(host, first_seen_ts, last_seen_ts, source_flags) VALUES(\"$host\",$now,$now,\"frontier\"); SELECT changes();" 2>/dev/null || echo 0)"
+    inserted="$(sqlite3 "$DB_PATH" <<SQL 2>/dev/null || echo 0
+.parameter init
+.parameter set @host '$host'
+.parameter set @now $now
+INSERT OR IGNORE INTO master(host, first_seen_ts, last_seen_ts, source_flags)
+VALUES(@host,@now,@now,'frontier');
+SELECT changes();
+SQL
+)"
 
     if [[ "$inserted" == "1" ]]; then
       # record truly-new frontier inserts for visibility
@@ -124,7 +133,7 @@ run_phase4() {
   fi
   echo " done" >&2
   # Build pre-snapshot from captured JSON
-  pre="$(echo "$CORE_PEERS_JSON_PRE" | jq -r '.[] | select(.network=="cjdns") | .addr' | while IFS= read -r raw; do cjdns_host_from_maybe_bracketed "$raw"; done | sort -u)"
+  pre="$(echo "$CORE_PEERS_JSON_PRE" | jq -r '.[] | select(.network=="cjdns") | .addr' | while IFS= read -r raw; do canon_host "$(cjdns_host_from_maybe_bracketed "$raw")"; done | sort -u)"
   local pre_n
   pre_n="$(printf '%s\n' "$pre" | sed '/^$/d' | wc -l | awk '{print $1}')"
   echo "Core peers (cjdns) pre-snapshot: $pre_n"
@@ -148,7 +157,7 @@ run_phase4() {
       | select(.network=="cjdns")
       | (if .inbound then "IN" else "OUT" end) + "\t" + .addr
     ' | while IFS=$'\t' read -r dir addr; do
-      host="$(cjdns_host_from_maybe_bracketed "$addr")"
+      host="$(canon_host "$(cjdns_host_from_maybe_bracketed "$addr")")"
         if [[ "$dir" == "OUT" ]]; then
           printf "    ${C_PINK}%-3s${C_RESET} %s\n" "$dir" "$host"
         else
@@ -169,6 +178,8 @@ run_phase4() {
     _nnew="$(wc -l <"$PHASE4_NEW_HOSTS_FILE" 2>/dev/null || echo 0)"
     log_info "Frontier: forcing onetry for ${_nnew} newly discovered host(s)"
     while IFS= read -r _h; do
+      [[ -n "${_h:-}" ]] || continue
+      _h="$(canon_host "$_h")"
       [[ -n "${_h:-}" ]] || continue
       log_info "Frontier: onetry -> ${_h}"
       $CLI addnode "${_h}" onetry >/dev/null 2>&1 || true
@@ -196,6 +207,10 @@ run_phase4() {
     while IFS= read -r host; do
       [[ -n "$host" ]] || continue
 
+
+
+        host="$(canon_host "$host")"
+        [[ -n "$host" ]] || continue
       # already connected?
       if printf '%s\n' "$pre" | grep -qxF "$host"; then
         continue
