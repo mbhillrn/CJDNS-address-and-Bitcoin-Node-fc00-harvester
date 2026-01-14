@@ -19,11 +19,12 @@ This project exists to discover **Bitcoin Core nodes reachable over CJDNS (fc00:
 **This tool writes runtime state directly into the project directory.**
 
 Runtime files include:
-- **`state.db`** – SQLite database of *all discovered fc addresses, DELETE if you want a FRESH DATABASE, and NOT MY HARVESTED ADDRESSES*
-  - **THIS FILE IS INCLUDED IN THE REPO - AND MAY BE UPDATED AS TIME GOES ON**
-  - It contains every fc address I have discovered, plus which ones are confirmed Bitcoin nodes. If you leave it in, it will gradually test all the addresses I have harvested with addnode, onetry.
-  - You may delete it to start fresh; the program will recreate it automatically
-- **`harvest.local.conf`** – Local runtime configuration. Created automatically when program is run.
+- **`state.db`** – SQLite database of *all discovered fc00 addresses*
+  - **This file is included in the repo and may be updated over time**
+  - Contains discovered cjdns fc00 addresses and which ones are confirmed Bitcoin nodes
+  - Delete or rename it to start with a fresh database; it will be recreated automatically
+  - If you keep it, the harvester can continue attempting/testing addresses over time
+- **`harvest.local.conf`** – Local runtime configuration (created automatically on first run)
 
 Dependency installation and notes:
 - Run or review: `./scripts/install_deps_ubuntu.sh`
