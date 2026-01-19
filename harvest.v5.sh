@@ -53,6 +53,121 @@ export_database_to_txt() {
     printf "    Master:     %s\n" "$(db_count_master)"
 }
 
+update_database_from_repo() {
+    print_box "DATABASE UPDATER"
+
+    echo
+    printf "  ${C_INFO}Downloading latest seed database from GitHub...${C_RESET}\n"
+    echo
+
+    local repo_url="https://raw.githubusercontent.com/mbhillrn/CJDNS-Bitcoin-Node-Address-Harvester/main/lib/seeddb.db"
+    local local_seeddb="${BASE_DIR}/lib/seeddb.db"
+    local temp_seeddb="/tmp/seeddb_download_$$.db"
+
+    if ! curl -sf -o "$temp_seeddb" "$repo_url" 2>/dev/null; then
+        echo
+        status_error "Failed to download seed database from GitHub"
+        printf "  Check your internet connection or try again later.\n"
+        return 1
+    fi
+
+    # Compare confirmed addresses
+    local repo_confirmed="/tmp/repo_confirmed_$$.txt"
+    local local_confirmed="/tmp/local_confirmed_$$.txt"
+
+    # Get confirmed addresses from downloaded seeddb
+    sqlite3 "$temp_seeddb" "SELECT host FROM confirmed ORDER BY host;" > "$repo_confirmed" 2>/dev/null
+
+    # Get confirmed addresses from local state.db (if exists)
+    if [[ -f "$DB_PATH" ]]; then
+        sqlite3 "$DB_PATH" "SELECT host FROM confirmed ORDER BY host;" > "$local_confirmed" 2>/dev/null
+    else
+        touch "$local_confirmed"
+    fi
+
+    # Find NEW confirmed addresses (in repo but not in local)
+    local new_confirmed="/tmp/new_confirmed_$$.txt"
+    comm -23 "$repo_confirmed" "$local_confirmed" > "$new_confirmed"
+
+    local new_count
+    new_count=$(wc -l < "$new_confirmed" 2>/dev/null || echo 0)
+
+    if (( new_count == 0 )); then
+        echo
+        printf "  ${C_SUCCESS}✓ Your database is up to date!${C_RESET}\n"
+        printf "  No new confirmed Bitcoin node addresses found in repo.\n"
+
+        # Still update local seeddb.db
+        cp "$temp_seeddb" "$local_seeddb"
+        echo
+        printf "  ${C_INFO}ℹ Local seeddb.db refreshed from repo${C_RESET}\n"
+
+        rm -f "$temp_seeddb" "$repo_confirmed" "$local_confirmed" "$new_confirmed"
+        return 0
+    fi
+
+    # Found new confirmed addresses!
+    echo
+    printf "  ${C_SUCCESS}${C_BOLD}Found %s new confirmed Bitcoin node address(es)!${C_RESET}\n" "$new_count"
+    echo
+    printf "  ${C_INFO}New addresses:${C_RESET}\n"
+    while IFS= read -r addr; do
+        [[ -n "$addr" ]] || continue
+        printf "    ${C_SUCCESS}+${C_RESET} %s\n" "$addr"
+    done < "$new_confirmed"
+
+    echo
+    read -r -p "  Create backup and add these addresses to your database? [y/N]: " confirm
+
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo
+        printf "  ${C_MUTED}Update cancelled${C_RESET}\n"
+
+        # Still update local seeddb.db
+        cp "$temp_seeddb" "$local_seeddb"
+        echo
+        printf "  ${C_INFO}ℹ Local seeddb.db refreshed from repo${C_RESET}\n"
+
+        rm -f "$temp_seeddb" "$repo_confirmed" "$local_confirmed" "$new_confirmed"
+        return 0
+    fi
+
+    # Create backup before updating
+    echo
+    printf "  ${C_INFO}Creating backup...${C_RESET}\n"
+    local timestamp
+    timestamp="$(date +%Y-%m-%d_%H-%M-%S)"
+    local backup_dir="${BASE_DIR}/bak"
+    mkdir -p "$backup_dir"
+    local backup_file="${backup_dir}/state_${timestamp}.db"
+
+    if [[ -f "$DB_PATH" ]]; then
+        cp "$DB_PATH" "$backup_file"
+        printf "  ${C_SUCCESS}✓ Backup created:${C_RESET} %s\n" "$(basename "$backup_file")"
+    fi
+
+    # Add new confirmed addresses to state.db
+    local added=0
+    while IFS= read -r addr; do
+        [[ -n "$addr" ]] || continue
+        db_upsert_confirmed "$addr"
+        db_upsert_master "$addr" "repo_update"
+        added=$((added + 1))
+    done < "$new_confirmed"
+
+    # Update local seeddb.db
+    cp "$temp_seeddb" "$local_seeddb"
+
+    echo
+    printf "  ${C_SUCCESS}${C_BOLD}✓ Database updated successfully!${C_RESET}\n"
+    printf "    Added:           %s confirmed address(es)\n" "$added"
+    printf "    Backup saved:    %s\n" "bak/$(basename "$backup_file")"
+    printf "    seeddb.db:       Updated from repo\n"
+
+    # Cleanup
+    rm -f "$temp_seeddb" "$repo_confirmed" "$local_confirmed" "$new_confirmed"
+}
+
 delete_database() {
     print_box "DELETE DATABASE"
 
@@ -443,15 +558,18 @@ show_main_menu() {
     printf "     └─ Try connecting to all discovered addresses. EXHAUSTIVE, may be time\n"
     printf "        consuming dependent upon size of database. Recommended only if\n"
     printf "        you're bored :)\n\n"
-    printf "  ${C_MUTED}4)${C_RESET} Database: Create txt file showing all discovered CJDNS addresses\n"
+    printf "  ${C_SUCCESS}4)${C_RESET} Database Updater: Check repo for newly confirmed Bitcoin node addresses\n"
+    printf "     └─ Downloads latest seeddb.db from GitHub and adds any new confirmed\n"
+    printf "        addresses to your database (will not erase, only add if new)\n\n"
+    printf "  ${C_MUTED}5)${C_RESET} Database: Create txt file showing all discovered CJDNS addresses\n"
     printf "     └─ Creates cjdns-bitcoin-seed-list.txt in program directory\n\n"
-    printf "  ${C_INFO}5)${C_RESET} Database: Backup current database\n"
+    printf "  ${C_INFO}6)${C_RESET} Database: Backup current database\n"
     printf "     └─ Creates timestamped backup in bak/ directory\n\n"
-    printf "  ${C_WARNING}6)${C_RESET} Database: Restore from backup\n"
+    printf "  ${C_WARNING}7)${C_RESET} Database: Restore from backup\n"
     printf "     └─ Restore database from previous backup\n\n"
-    printf "  ${C_ERROR}7)${C_RESET} Database: Delete backup databases\n"
+    printf "  ${C_ERROR}8)${C_RESET} Database: Delete backup databases\n"
     printf "     └─ Delete individual or all backup databases\n\n"
-    printf "  ${C_ERROR}8)${C_RESET} Database: Delete current database (state.db)\n"
+    printf "  ${C_ERROR}9)${C_RESET} Database: Delete current database (state.db)\n"
     printf "     └─ Deletes/resets current database, prompting setup on next run\n\n"
     printf "  ${C_ERROR}0)${C_RESET} Exit\n\n"
 }
@@ -696,7 +814,7 @@ main() {
         show_main_menu
 
         local choice
-        read -r -p "Choice [1-8, 0=exit]: " choice
+        read -r -p "Choice [1-9, 0=exit]: " choice
 
         case "$choice" in
             1)
@@ -713,26 +831,31 @@ main() {
                 read -r -p "Press Enter to continue..."
                 ;;
             4)
-                export_database_to_txt
+                update_database_from_repo
                 echo
                 read -r -p "Press Enter to continue..."
                 ;;
             5)
-                backup_database
+                export_database_to_txt
                 echo
                 read -r -p "Press Enter to continue..."
                 ;;
             6)
-                restore_database
+                backup_database
                 echo
                 read -r -p "Press Enter to continue..."
                 ;;
             7)
-                delete_backups
+                restore_database
                 echo
                 read -r -p "Press Enter to continue..."
                 ;;
             8)
+                delete_backups
+                echo
+                read -r -p "Press Enter to continue..."
+                ;;
+            9)
                 delete_database
                 ;;
             0)

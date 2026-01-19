@@ -74,23 +74,24 @@ On first run, the script will:
 
 ### Main Menu Options
 
-After setup, you'll see the main menu with 8 options:
+After setup, you'll see the main menu with 9 options:
 
 1. **Run Harvester** - Discover and test new addresses (local + optional remote)
 2. **Connect to confirmed nodes** - Attempt connection to all known Bitcoin nodes
 3. **Connect to all addresses** - Exhaustive connection test (use if bored!)
-4. **Export database to txt** - Creates `cjdns-bitcoin-seed-list.txt`
-5. **Backup database** - Create timestamped backup in `bak/` directory
-6. **Restore from backup** - Restore database from previous backup
-7. **Delete backups** - Manage backup files
-8. **Delete database** - Reset and reseed from scratch
+4. **Database Updater** - Check GitHub for newly confirmed nodes and add them to your database
+5. **Export database to txt** - Creates `cjdns-bitcoin-seed-list.txt`
+6. **Backup database** - Create timestamped backup in `bak/` directory
+7. **Restore from backup** - Restore database from previous backup
+8. **Delete backups** - Manage backup files
+9. **Delete database** - Reset and reseed from scratch
 
 ---
 
 ## Features
 
 ### Version 5 (Current)
-- **8-option menu** - Harvesting, connection testing, database management
+- **9-option menu** - Harvesting, connection testing, database management, database updates
 - **First-run wizard** - Seed from included confirmed nodes or start fresh
 - **Automatic everything** - Detects your Bitcoin/CJDNS setup automatically
 - **Local harvesting** - Scans your NodeStore and frontier peers
@@ -134,6 +135,14 @@ The database has two main tables:
 
 When the harvester runs, it only tests NEW addresses not in the master list. This prevents wasting time re-testing addresses that have already been discovered.
 
+### Address Format
+
+All CJDNS addresses in the database are stored in **full expanded IPv6 format**, not shortened/compressed format. For example:
+- Full format: `fc00:0000:0000:0000:0000:0000:0000:0001`
+- Compressed format: `fc00::1` (NOT used)
+
+This prevents duplicate entries when the same address is discovered in different formats. If you manually add addresses to the database, make sure to use the full expanded format to avoid duplicates.
+
 ### Seed Database Options
 
 On first run (or after deleting `state.db`), you can choose how to initialize your database:
@@ -168,6 +177,12 @@ CJDNS addresses may not be as attractive to Bitcoin's addrman (address manager) 
 ### Testing Process
 
 After discovering addresses, the harvester uses Bitcoin Core's `addnode <address> onetry` command to test each one. If it connects successfully, that address gets added to the confirmed list.
+
+**Important notes about onetry testing:**
+- The `onetry` command does NOT attempt to connect to nodes that Bitcoin Core is already connected to. If you're already connected to an address, it will be skipped during testing.
+- During testing, only about **1/3 to 1/2 of the confirmed list** typically connects at any given time. This is normal behavior.
+- Online nodes seem to rotate a bit - a node that didn't connect now might connect later, and vice versa.
+- The harvester maintains the confirmed list, and I'll try to keep the seed database updated with newly discovered nodes.
 
 There's a 10-second wait after testing to let connections establish, then it checks `getpeerinfo` to see what actually connected.
 
@@ -208,7 +223,7 @@ bak/                    # Database backups (created by Option 6)
   └── state_*.db       # Timestamped backup files
 scripts/
   └── install_deps_ubuntu.sh  # Dependency installer
-cjdns-bitcoin-seed-list.txt  # Exported address list (created by Option 4)
+cjdns-bitcoin-seed-list.txt  # Exported address list (created by Option 5)
 ```
 
 ---
@@ -240,9 +255,10 @@ sudo apt-get install sqlite3
 ## Version History
 
 ### v5.1 (January 2026) - Database Management & UX Polish
+- Added Database Updater: Check GitHub for newly confirmed nodes (Option 4)
 - Added first-run database wizard with seeding options
 - Database backup/restore functionality (Options 6, 7, 8)
-- Export database to txt file (Option 4)
+- Export database to txt file (Option 5)
 - Connection tracking shows peers at start/end of runs
 - Run summary with clear statistics
 - Animated progress indicators
@@ -276,6 +292,7 @@ This is a hobby project but I'm happy to accept pull requests! Feel free to:
 - Suggest features
 - Fix my terrible code
 - Improve the documentation
+- **Share found Bitcoin nodes** - If you discover CJDNS Bitcoin node addresses, please post them in [GitHub Discussions](https://github.com/mbhillrn/CJDNS-Bitcoin-Node-Address-Harvester/discussions)! This helps build the community database and benefits all users.
 
 Just open an issue or PR on GitHub.
 
