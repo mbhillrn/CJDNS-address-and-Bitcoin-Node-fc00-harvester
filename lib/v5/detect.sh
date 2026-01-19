@@ -9,9 +9,18 @@
 prompt_yn() {
     local prompt="$1"
     local ans
-    read -r -p "$prompt [y/N]: " ans || true
-    ans="${ans,,}"
-    [[ "$ans" == "y" || "$ans" == "yes" ]]
+    while true; do
+        read -r -p "$prompt [y/N]: " ans || true
+        ans="${ans,,}"  # lowercase
+
+        if [[ "$ans" == "y" || "$ans" == "yes" ]]; then
+            return 0  # true
+        elif [[ "$ans" == "n" || "$ans" == "no" || -z "$ans" ]]; then
+            return 1  # false
+        else
+            printf "${C_ERROR}Invalid response. Please answer 'y' or 'n'.${C_RESET}\n"
+        fi
+    done
 }
 
 prompt_path() {

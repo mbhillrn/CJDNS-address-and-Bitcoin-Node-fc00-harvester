@@ -69,11 +69,13 @@ run_harvester_mode() {
 
     # Ask about remote nodestore
     echo
-    if prompt_yn "Harvest remote hosts via SSH?"; then
+    echo "Almost all set..."
+    echo
+    if prompt_yn "Harvest nodestore from other machines on your local network (uncommon)?"; then
         harvest_remote="yes"
         echo
-        status_info "You can use SSH keys (recommended) or password authentication"
-        status_info "Remote harvesting includes: NodeStore + Frontier expansion"
+        status_info "Remote harvesting will scan NodeStore + Frontier on other CJDNS nodes"
+        status_info "Requires SSH key-based authentication (will help you set up)"
         echo
 
         # Configure remote hosts

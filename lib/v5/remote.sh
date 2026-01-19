@@ -4,45 +4,43 @@
 # Global arrays for remote host configuration
 declare -g -a REMOTE_HOSTS=()
 declare -g -a REMOTE_USERS=()
-declare -g -a REMOTE_PASSWORDS=()
-declare -g -a REMOTE_USE_SSHPASS=()
 
 # ============================================================================
-# SSH Connection Testing
+# SSH Connection Testing (Key-based only)
 # ============================================================================
-test_ssh_connection() {
+test_ssh_keys() {
     local host="$1"
     local user="$2"
-    local password="$3"
-    local use_sshpass="$4"
 
-    local ssh_cmd="ssh"
-    local ssh_opts="-o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o PasswordAuthentication=no"
-
-    if [[ "$use_sshpass" == "yes" && -n "$password" ]]; then
-        ssh_opts="-o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new"
-        if ! command -v sshpass >/dev/null 2>&1; then
-            status_error "sshpass not installed (required for password auth)"
-            echo "Install with: sudo apt-get install sshpass"
-            return 1
-        fi
-        ssh_cmd="sshpass -p '$password' ssh"
-    fi
-
-    # Test basic SSH connection
-    if ! eval "$ssh_cmd $ssh_opts ${user}@${host} 'echo test'" >/dev/null 2>&1; then
+    # Test basic SSH connection with keys only
+    if ! ssh -o ConnectTimeout=5 \
+             -o BatchMode=yes \
+             -o PasswordAuthentication=no \
+             -o StrictHostKeyChecking=accept-new \
+             "${user}@${host}" 'echo test' >/dev/null 2>&1; then
         return 1
     fi
 
     # Test cjdnstool availability
-    if ! eval "$ssh_cmd $ssh_opts ${user}@${host} 'command -v cjdnstool'" >/dev/null 2>&1; then
+    if ! ssh -o ConnectTimeout=5 \
+             -o BatchMode=yes \
+             -o PasswordAuthentication=no \
+             -o StrictHostKeyChecking=accept-new \
+             "${user}@${host}" 'command -v cjdnstool' >/dev/null 2>&1; then
         status_error "cjdnstool not found on remote host"
+        echo "Install with: npm install -g cjdnstool"
         return 1
     fi
 
     # Test CJDNS admin connection
-    if ! eval "$ssh_cmd $ssh_opts ${user}@${host} 'cjdnstool -a 127.0.0.1 -p 11234 -P NONE cexec Core_nodeInfo'" >/dev/null 2>&1; then
-        status_error "CJDNS not responding on remote host"
+    if ! ssh -o ConnectTimeout=5 \
+             -o BatchMode=yes \
+             -o PasswordAuthentication=no \
+             -o StrictHostKeyChecking=accept-new \
+             "${user}@${host}" \
+             'cjdnstool -a 127.0.0.1 -p 11234 -P NONE cexec Core_nodeInfo' >/dev/null 2>&1; then
+        status_error "CJDNS not responding on remote host (or wrong port)"
+        echo "Make sure CJDNS is running on ${host} and admin port is 11234"
         return 1
     fi
 
@@ -62,151 +60,154 @@ configure_remote_hosts() {
 
         # Get host address
         local host
-        read -r -p "Remote host address (IP or hostname) [empty to finish]: " host
-        host="${host// /}"  # trim spaces
+        while true; do
+            read -r -p "Remote host address (IP or hostname) [empty to finish]: " host
+            host="${host// /}"  # trim spaces
 
-        if [[ -z "$host" ]]; then
-            if [[ "$host_num" -eq 1 ]]; then
-                status_info "No remote hosts configured"
+            if [[ -z "$host" ]]; then
+                if [[ "$host_num" -eq 1 ]]; then
+                    status_info "No remote hosts configured"
+                fi
+                return 0
             fi
-            break
-        fi
+
+            # Basic validation
+            if [[ "$host" =~ ^[a-zA-Z0-9._-]+$ ]] || [[ "$host" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                break
+            else
+                printf "${C_ERROR}Invalid hostname/IP. Try again.${C_RESET}\n"
+            fi
+        done
 
         # Get username
         local user
-        read -r -p "SSH username for $host: " user
-        user="${user// /}"
-        if [[ -z "$user" ]]; then
-            status_warn "Username required, skipping this host"
-            continue
-        fi
+        while true; do
+            read -r -p "SSH username for $host: " user
+            user="${user// /}"
+            if [[ -n "$user" ]]; then
+                break
+            else
+                printf "${C_ERROR}Username required. Try again.${C_RESET}\n"
+            fi
+        done
 
-        # Ask about authentication method
+        # Test if SSH keys already work
         echo
-        echo "Authentication method:"
-        echo "  1) SSH key (passwordless)"
-        echo "  2) Password"
-        echo
-        local auth_choice
-        read -r -p "Choice [1/2]: " auth_choice
+        printf "  "
+        show_progress "Testing SSH key authentication"
 
-        local password=""
-        local use_sshpass="no"
-
-        if [[ "$auth_choice" == "2" ]]; then
-            # Password authentication
-            read -r -s -p "Password for ${user}@${host}: " password
-            echo
-            use_sshpass="yes"
-        fi
-
-        # Test connection
-        printf "\n  "
-        show_progress "Testing connection to ${user}@${host}"
-
-        if test_ssh_connection "$host" "$user" "$password" "$use_sshpass"; then
+        if test_ssh_keys "$host" "$user"; then
             show_progress_done
-            status_ok "Connection successful"
+            status_ok "SSH keys already configured!"
 
             # Add to arrays
             REMOTE_HOSTS+=("$host")
             REMOTE_USERS+=("$user")
-            REMOTE_PASSWORDS+=("$password")
-            REMOTE_USE_SSHPASS+=("$use_sshpass")
 
             host_num=$((host_num + 1))
         else
             show_progress_fail
-            status_error "Connection failed - host not added"
             echo
 
             # Offer to set up SSH keys
-            if [[ "$auth_choice" == "2" || -z "$auth_choice" ]]; then
-                echo "Would you like to set up SSH key authentication?"
-                echo "This is more secure and won't require passwords in the future."
-                echo
-                if prompt_yn "Run ssh-copy-id now?"; then
-                    echo
-                    echo "Running: ssh-copy-id ${user}@${host}"
-                    echo "You'll need to enter your password one more time:"
-                    echo
-                    if ssh-copy-id -o ConnectTimeout=5 "${user}@${host}"; then
-                        echo
-                        status_ok "SSH keys configured successfully"
-                        echo
-                        # Retry with keys
-                        printf "  "
-                        show_progress "Re-testing connection with SSH keys"
-                        if test_ssh_connection "$host" "$user" "" "no"; then
-                            show_progress_done
-                            status_ok "Connection successful with SSH keys"
+            echo "SSH keys not configured for ${user}@${host}"
+            echo
+            echo "Would you like to set up SSH key authentication now?"
+            echo "You'll be prompted for your password ONCE to copy the key."
+            echo
 
-                            # Add to arrays (without password)
+            local setup_keys
+            while true; do
+                read -r -p "Set up SSH keys now? [y/N]: " setup_keys
+                setup_keys="${setup_keys,,}"  # lowercase
+
+                if [[ "$setup_keys" == "y" || "$setup_keys" == "yes" ]]; then
+                    echo
+                    echo "${C_BOLD}Running: ssh-copy-id ${user}@${host}${C_RESET}"
+                    echo "Enter your password when prompted:"
+                    echo
+
+                    # Run ssh-copy-id (interactive, user types password)
+                    if ssh-copy-id -o ConnectTimeout=10 "${user}@${host}"; then
+                        echo
+                        status_ok "SSH keys copied successfully"
+                        echo
+
+                        # Test again
+                        printf "  "
+                        show_progress "Re-testing SSH key authentication"
+                        if test_ssh_keys "$host" "$user"; then
+                            show_progress_done
+                            status_ok "SSH keys working!"
+
+                            # Add to arrays
                             REMOTE_HOSTS+=("$host")
                             REMOTE_USERS+=("$user")
-                            REMOTE_PASSWORDS+=("")
-                            REMOTE_USE_SSHPASS+=("no")
 
                             host_num=$((host_num + 1))
+                            break
                         else
                             show_progress_fail
-                            status_error "Still unable to connect"
+                            status_error "SSH keys still not working - host not added"
+                            break
                         fi
                     else
                         echo
-                        status_error "ssh-copy-id failed"
+                        status_error "ssh-copy-id failed - host not added"
+                        break
                     fi
+                elif [[ "$setup_keys" == "n" || "$setup_keys" == "no" || -z "$setup_keys" ]]; then
+                    status_warn "Skipping this host (SSH keys required)"
+                    break
+                else
+                    printf "${C_ERROR}Invalid response. Please answer 'y' or 'n'.${C_RESET}\n"
                 fi
+            done
+        fi
+
+        echo
+
+        # Ask about adding another host
+        local add_another
+        while true; do
+            read -r -p "Add another remote host? [y/N]: " add_another
+            add_another="${add_another,,}"
+
+            if [[ "$add_another" == "y" || "$add_another" == "yes" ]]; then
+                break  # Continue outer loop
+            elif [[ "$add_another" == "n" || "$add_another" == "no" || -z "$add_another" ]]; then
+                # Summary
+                if [[ "${#REMOTE_HOSTS[@]}" -gt 0 ]]; then
+                    echo
+                    printf "${C_SUCCESS}${C_BOLD}Configured %d remote host(s):${C_RESET}\n" "${#REMOTE_HOSTS[@]}"
+                    for i in "${!REMOTE_HOSTS[@]}"; do
+                        printf "  %d. ${C_INFO}%s@%s${C_RESET} ${C_DIM}(SSH keys)${C_RESET}\n" \
+                            "$((i + 1))" "${REMOTE_USERS[$i]}" "${REMOTE_HOSTS[$i]}"
+                    done
+                fi
+                return 0
+            else
+                printf "${C_ERROR}Invalid response. Please answer 'y' or 'n'.${C_RESET}\n"
             fi
-        fi
-
-        echo
-        if ! prompt_yn "Add another remote host?"; then
-            break
-        fi
-    done
-
-    # Summary
-    if [[ "${#REMOTE_HOSTS[@]}" -gt 0 ]]; then
-        echo
-        printf "${C_SUCCESS}${C_BOLD}Configured %d remote host(s):${C_RESET}\n" "${#REMOTE_HOSTS[@]}"
-        for i in "${!REMOTE_HOSTS[@]}"; do
-            local auth_method="SSH key"
-            [[ "${REMOTE_USE_SSHPASS[$i]}" == "yes" ]] && auth_method="password"
-            printf "  %d. ${C_INFO}%s@%s${C_RESET} (${C_DIM}%s${C_RESET})\n" \
-                "$((i + 1))" "${REMOTE_USERS[$i]}" "${REMOTE_HOSTS[$i]}" "$auth_method"
         done
-    fi
+    done
 }
 
 # ============================================================================
-# SSH Command Builder
+# SSH Command Execution (Keys only)
 # ============================================================================
-build_ssh_command() {
+exec_ssh_command() {
     local idx="$1"
     local remote_command="$2"
 
     local host="${REMOTE_HOSTS[$idx]}"
     local user="${REMOTE_USERS[$idx]}"
-    local password="${REMOTE_PASSWORDS[$idx]}"
-    local use_sshpass="${REMOTE_USE_SSHPASS[$idx]}"
 
-    local ssh_opts="-o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR"
-
-    if [[ "$use_sshpass" == "yes" && -n "$password" ]]; then
-        printf "sshpass -p %q ssh %s %s@%s %q" "$password" "$ssh_opts" "$user" "$host" "$remote_command"
-    else
-        printf "ssh %s -o BatchMode=yes -o PasswordAuthentication=no %s@%s %q" "$ssh_opts" "$user" "$host" "$remote_command"
-    fi
-}
-
-# ============================================================================
-# Execute SSH Command
-# ============================================================================
-exec_ssh_command() {
-    local idx="$1"
-    local remote_command="$2"
-    local cmd
-    cmd="$(build_ssh_command "$idx" "$remote_command")"
-    eval "$cmd"
+    ssh -o ConnectTimeout=10 \
+        -o BatchMode=yes \
+        -o PasswordAuthentication=no \
+        -o StrictHostKeyChecking=accept-new \
+        -o LogLevel=ERROR \
+        "${user}@${host}" \
+        "$remote_command"
 }
