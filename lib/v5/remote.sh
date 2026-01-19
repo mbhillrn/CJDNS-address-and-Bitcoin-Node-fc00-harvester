@@ -195,12 +195,35 @@ upload_file_to_remote() {
     local host="${REMOTE_HOSTS[$idx]}"
     local user="${REMOTE_USERS[$idx]}"
 
-    # Use cat + ssh to upload (more reliable than stdin redirection)
-    cat "$local_file" | ssh -o ConnectTimeout=10 \
-                            -o BatchMode=yes \
-                            -o PasswordAuthentication=no \
-                            -o StrictHostKeyChecking=accept-new \
-                            -o LogLevel=ERROR \
-                            "${user}@${host}" \
-                            "cat > '$remote_file'" 2>/dev/null
+    # Check local file exists
+    if [[ ! -f "$local_file" ]]; then
+        echo "ERROR: Local file not found: $local_file" >&2
+        return 1
+    fi
+
+    # Upload file via cat + ssh (don't suppress errors!)
+    if cat "$local_file" | ssh -o ConnectTimeout=10 \
+                                -o BatchMode=yes \
+                                -o PasswordAuthentication=no \
+                                -o StrictHostKeyChecking=accept-new \
+                                -o LogLevel=ERROR \
+                                "${user}@${host}" \
+                                "cat > '$remote_file'"; then
+        # Verify upload succeeded
+        if ssh -o ConnectTimeout=5 \
+               -o BatchMode=yes \
+               -o PasswordAuthentication=no \
+               -o StrictHostKeyChecking=accept-new \
+               -o LogLevel=ERROR \
+               "${user}@${host}" \
+               "test -f '$remote_file'" 2>/dev/null; then
+            return 0
+        else
+            echo "ERROR: Upload verification failed for $remote_file" >&2
+            return 1
+        fi
+    else
+        echo "ERROR: SSH upload command failed" >&2
+        return 1
+    fi
 }
