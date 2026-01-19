@@ -260,7 +260,7 @@ harvest_remote_frontier() {
         fi
 
         # Execute frontier expansion remotely
-        local frontier_cmd="bash $remote_script 127.0.0.1 11234 2000 2>&1"
+        local frontier_cmd="bash -c 'source $remote_script && cjdh_frontier_expand 127.0.0.1 11234 2000' 2>&1"
         local frontier_result
         if ! frontier_result="$(exec_ssh_command "$idx" "$frontier_cmd" 2>&1)"; then
             printf "${C_ERROR}failed${C_RESET}\n"
