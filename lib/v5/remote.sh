@@ -153,7 +153,7 @@ configure_remote_hosts() {
                     echo
                     printf "${C_SUCCESS}${C_BOLD}Configured %d remote host(s):${C_RESET}\n" "${#REMOTE_HOSTS[@]}"
                     for i in "${!REMOTE_HOSTS[@]}"; do
-                        printf "  %d. ${C_INFO}%s@%s${C_RESET} ${C_DIM}(SSH keys)${C_RESET}\n" \
+                        printf "  %d. ${C_INFO}%s@%s${C_RESET}\n" \
                             "$((i + 1))" "${REMOTE_USERS[$i]}" "${REMOTE_HOSTS[$i]}"
                     done
                 fi
@@ -182,4 +182,25 @@ exec_ssh_command() {
         -o LogLevel=ERROR \
         "${user}@${host}" \
         "$remote_command"
+}
+
+# ============================================================================
+# File Upload to Remote Host
+# ============================================================================
+upload_file_to_remote() {
+    local idx="$1"
+    local local_file="$2"
+    local remote_file="$3"
+
+    local host="${REMOTE_HOSTS[$idx]}"
+    local user="${REMOTE_USERS[$idx]}"
+
+    # Use cat + ssh to upload (more reliable than stdin redirection)
+    cat "$local_file" | ssh -o ConnectTimeout=10 \
+                            -o BatchMode=yes \
+                            -o PasswordAuthentication=no \
+                            -o StrictHostKeyChecking=accept-new \
+                            -o LogLevel=ERROR \
+                            "${user}@${host}" \
+                            "cat > '$remote_file'" 2>/dev/null
 }

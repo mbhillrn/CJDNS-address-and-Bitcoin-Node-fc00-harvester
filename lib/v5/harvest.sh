@@ -253,7 +253,7 @@ harvest_remote_frontier() {
 
         # Upload frontier script to remote host
         local remote_script="/tmp/cjdh_frontier_expand.sh"
-        if ! exec_ssh_command "$idx" "cat > $remote_script" < "${SCRIPT_DIR}/lib/v5/frontier.sh" 2>/dev/null; then
+        if ! upload_file_to_remote "$idx" "${SCRIPT_DIR}/lib/v5/frontier.sh" "$remote_script"; then
             printf "${C_ERROR}failed${C_RESET} (upload error)\n"
             echo
             continue
