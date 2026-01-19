@@ -80,10 +80,10 @@ After setup, you'll see the main menu with 8 options:
 2. **Connect to confirmed nodes** - Attempt connection to all known Bitcoin nodes
 3. **Connect to all addresses** - Exhaustive connection test (use if bored!)
 4. **Export database to txt** - Creates `cjdns-bitcoin-seed-list.txt`
-5. **Delete database** - Reset and reseed from scratch
-6. **Backup database** - Create timestamped backup in `bak/` directory
-7. **Restore from backup** - Restore database from previous backup
-8. **Delete backups** - Manage backup files
+5. **Backup database** - Create timestamped backup in `bak/` directory
+6. **Restore from backup** - Restore database from previous backup
+7. **Delete backups** - Manage backup files
+8. **Delete database** - Reset and reseed from scratch
 
 ---
 
