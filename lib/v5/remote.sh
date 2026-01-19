@@ -94,11 +94,11 @@ configure_remote_hosts() {
         # Test if SSH keys already work
         echo
         printf "  "
-        show_progress "Testing SSH key authentication"
+        show_progress "Testing connection"
 
         if test_ssh_keys "$host" "$user"; then
             show_progress_done
-            status_ok "Automatic login already configured!"
+            status_ok "Already configured"
 
             # Add to arrays
             REMOTE_HOSTS+=("$host")
@@ -106,37 +106,34 @@ configure_remote_hosts() {
 
             host_num=$((host_num + 1))
         else
-            show_progress_fail
-            echo
-            echo "  Setting up automatic login for ${user}@${host}"
-            echo "  ${C_DIM}(This is safe - just adding an SSH key for passwordless login)${C_RESET}"
+            printf "${C_WARN}login required${C_RESET}\n"
             echo
 
-            # Automatically run ssh-copy-id (no asking)
-            if ssh-copy-id -o ConnectTimeout=10 "${user}@${host}" 2>&1; then
-                echo
-                status_ok "Automatic login configured!"
-                echo
+            # Ensure SSH key exists (silently)
+            if [[ ! -f ~/.ssh/id_rsa ]]; then
+                ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa -q >/dev/null 2>&1
+            fi
 
-                # Test again
-                printf "  "
-                show_progress "Verifying connection"
-                if test_ssh_keys "$host" "$user"; then
-                    show_progress_done
+            # Run ssh-copy-id - let it prompt for password
+            echo "  Setting up automatic login..."
+            echo
+            if ssh-copy-id -o ConnectTimeout=10 "${user}@${host}" 2>&1 | \
+               sed '/^\/usr\/bin\/ssh-copy-id: INFO:/d; /^Number of key(s) added:/d'; then
+                echo
+                status_ok "Automatic login configured"
 
+                # Verify it works
+                if test_ssh_keys "$host" "$user" 2>/dev/null; then
                     # Add to arrays
                     REMOTE_HOSTS+=("$host")
                     REMOTE_USERS+=("$user")
-
                     host_num=$((host_num + 1))
                 else
-                    show_progress_fail
-                    status_error "Connection test failed - host not added"
+                    status_error "Verification failed - host not added"
                 fi
             else
                 echo
-                status_error "Setup failed - host not added"
-                echo "  ${C_DIM}Make sure you entered the correct password${C_RESET}"
+                status_error "Setup failed"
             fi
         fi
 
