@@ -25,8 +25,13 @@ harvest_nodestore() {
     local all_new=()
     local all_existing=()
 
+    printf "  ${C_DIM}Scanning pages:${C_RESET} "
+
     while true; do
         local tmpjson="/tmp/cjdh_nodestore_p${page}.json"
+
+        # Show progress
+        printf "${C_INFO}%s${C_RESET} " "$page"
 
         # Fetch page
         if ! cjdnstool -a "$CJDNS_ADMIN_ADDR" -p "$CJDNS_ADMIN_PORT" -P NONE cexec NodeStore_dumpTable --page="$page" >"$tmpjson" 2>/dev/null; then
@@ -63,6 +68,8 @@ harvest_nodestore() {
         rm -f "$tmpjson"
         page=$((page + 1))
     done
+
+    echo  # Newline after page numbers
 
     # Read accumulated results
     if [[ -f "/tmp/cjdh_harvest_new.$$" ]]; then
@@ -256,13 +263,15 @@ harvest_frontier() {
     echo
     print_divider
     printf "${C_BOLD}Frontier Summary:${C_RESET}\n"
-    printf "  Total discovered: %s\n" "$total"
+    printf "  Peer keys found:  %s\n" "$(grep -c 'keys=' "$frontier_log" 2>/dev/null | head -n1 || echo "?")"
+    printf "  Valid addresses:  %s\n" "$total"
     if (( new > 0 )); then
         printf "  ${C_NEW}NEW addresses:    %s${C_RESET}\n" "$new"
     else
         printf "  ${C_MUTED}NEW addresses:    %s${C_RESET}\n" "$new"
     fi
     printf "  Already known:    %s\n" "$existing"
+    printf "\n  ${C_DIM}Note: Some peer keys don't convert to valid fc00:: addresses${C_RESET}\n"
     print_divider
 
     rm -f "$frontier_out" "$frontier_log" "/tmp/cjdh_frontier_new.$$"
@@ -277,35 +286,51 @@ harvest_addrman() {
     local addrs_json
     addrs_json="$(bash -c "$CLI getnodeaddresses 0 cjdns" 2>/dev/null)" || addrs_json="[]"
 
-    local total new=0
+    local total new=0 existing=0
     total="$(echo "$addrs_json" | jq 'length' 2>/dev/null || echo 0)"
 
     if (( total > 0 )); then
+        local new_file="/tmp/cjdh_addrman_new.$$"
+        local existing_file="/tmp/cjdh_addrman_existing.$$"
+        : >"$new_file"
+        : >"$existing_file"
+
         echo "$addrs_json" | jq -r '.[]? | .address' | while IFS= read -r addr; do
             addr="$(canon_host "$addr")"
             [[ -n "$addr" ]] || continue
 
             if db_check_new "$addr"; then
                 db_upsert_master "$addr" "addrman"
-                db_upsert_confirmed "$addr"  # Assume in addrman = good
-                echo "$addr" >> "/tmp/cjdh_addrman_new.$$"
+                db_upsert_confirmed "$addr"
+                echo "$addr" >> "$new_file"
             else
                 db_upsert_master "$addr" "addrman"
+                echo "$addr" >> "$existing_file"
             fi
         done
 
-        if [[ -f "/tmp/cjdh_addrman_new.$$" ]]; then
-            new="$(wc -l < "/tmp/cjdh_addrman_new.$$" 2>/dev/null || echo 0)"
-        fi
+        new="$(wc -l < "$new_file" 2>/dev/null || echo 0)"
+        existing="$(wc -l < "$existing_file" 2>/dev/null || echo 0)"
 
-        printf "  Found %s addresses in Bitcoin addrman" "$total"
+        printf "  Found %s addresses in Bitcoin addrman\n" "$total"
+
         if (( new > 0 )); then
-            printf " (${C_NEW}%s NEW${C_RESET})\n" "$new"
-        else
-            printf "\n"
+            echo
+            printf "  ${C_NEW}${C_BOLD}NEW from addrman (%s):${C_RESET}\n" "$new"
+            while IFS= read -r addr; do
+                printf "    ${C_NEW}●${C_RESET} %s ${C_NEW}(NEW!)${C_RESET}\n" "$addr"
+            done < "$new_file"
         fi
 
-        rm -f "/tmp/cjdh_addrman_new.$$"
+        if (( existing > 0 )); then
+            echo
+            printf "  ${C_MUTED}Already known (%s):${C_RESET}\n" "$existing"
+            while IFS= read -r addr; do
+                printf "    ${C_MUTED}•${C_RESET} %s\n" "$addr"
+            done < "$existing_file"
+        fi
+
+        rm -f "$new_file" "$existing_file"
     else
         printf "  ${C_MUTED}No CJDNS addresses in addrman${C_RESET}\n"
     fi
@@ -321,19 +346,44 @@ harvest_connected_peers() {
     peers_json="$(bash -c "$CLI getpeerinfo" 2>/dev/null)" || peers_json="[]"
 
     local cjdns_peers
-    cjdns_peers="$(echo "$peers_json" | jq -r '.[] | select(.network=="cjdns") | .addr' 2>/dev/null)"
+    cjdns_peers="$(echo "$peers_json" | jq -r '.[] | select(.network=="cjdns") | [.addr, .inbound] | @tsv' 2>/dev/null)"
 
-    local count=0
-    while IFS= read -r raw; do
+    local count=0 inbound=0 outbound=0
+    local unique_addrs=()
+
+    echo
+    while IFS=$'\t' read -r raw is_in; do
         [[ -n "$raw" ]] || continue
         local host
         host="$(canon_host "$(cjdns_host_from_maybe_bracketed "$raw")")"
         [[ -n "$host" ]] || continue
+
+        # Determine direction
+        local direction
+        if [[ "$is_in" == "true" ]]; then
+            direction="${C_IN}IN ${C_RESET}"
+            inbound=$((inbound + 1))
+        else
+            direction="${C_OUT}OUT${C_RESET}"
+            outbound=$((outbound + 1))
+        fi
+
+        # Track unique addresses
+        if [[ ! " ${unique_addrs[*]} " =~ " ${host} " ]]; then
+            unique_addrs+=("$host")
+        fi
+
+        printf "    %s  %s\n" "$direction" "$host"
 
         db_upsert_master "$host" "connected_now"
         db_upsert_confirmed "$host"  # Auto-confirm connected peers
         count=$((count + 1))
     done <<< "$cjdns_peers"
 
-    printf "  Harvested %s connected CJDNS peers (auto-confirmed)\n" "$count"
+    local unique_count=${#unique_addrs[@]}
+
+    echo
+    printf "  ${C_BOLD}Total:${C_RESET} %s connections (%s unique addresses)\n" "$count" "$unique_count"
+    printf "  ${C_IN}Inbound:${C_RESET} %s  ${C_OUT}Outbound:${C_RESET} %s\n" "$inbound" "$outbound"
+    printf "  ${C_SUCCESS}All connected peers auto-confirmed${C_RESET}\n"
 }

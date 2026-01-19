@@ -29,20 +29,40 @@ onetry_addresses() {
         done | sort -u > "$pre_peers"
 
     # Dispatch onetry for each address
-    local dispatched=0
+    local dispatched=0 failed=0 current=0
+    local show_every=10  # Show progress every N addresses
+
+    printf "  ${C_DIM}Dispatching onetry commands...${C_RESET}\n\n"
+
     for addr in "${addresses[@]}"; do
         addr="$(canon_host "$addr")"
         [[ -n "$addr" ]] || continue
 
-        printf "  ${C_MUTED}Trying:${C_RESET} %s ... " "$addr"
+        current=$((current + 1))
 
         if bash -c "$CLI addnode \"[$addr]\" onetry" >/dev/null 2>&1; then
-            printf "${C_SUCCESS}dispatched${C_RESET}\n"
             dispatched=$((dispatched + 1))
         else
-            printf "${C_ERROR}failed${C_RESET}\n"
+            failed=$((failed + 1))
+        fi
+
+        # Show progress periodically
+        if (( current % show_every == 0 )) || (( current == count )); then
+            printf "  ${C_INFO}Progress:${C_RESET} %s/%s dispatched" "$current" "$count"
+            if (( failed > 0 )); then
+                printf " (${C_ERROR}%s failed${C_RESET})" "$failed"
+            fi
+            printf "\r"
         fi
     done
+
+    echo  # Newline after progress
+    echo
+    printf "  ${C_SUCCESS}✓ Dispatched %s addresses${C_RESET}" "$dispatched"
+    if (( failed > 0 )); then
+        printf " (${C_ERROR}%s failed${C_RESET})" "$failed"
+    fi
+    printf "\n"
 
     # Wait for connections to settle
     if (( dispatched > 0 )); then
@@ -145,6 +165,8 @@ onetry_all_confirmed() {
 # Onetry only NEW addresses (for harvester mode)
 # ============================================================================
 onetry_new_addresses() {
+    print_section "Testing Unconfirmed Addresses"
+
     # Get all master addresses and check which ones have never been confirmed
     local all_master new_addresses=()
 
@@ -162,11 +184,19 @@ onetry_new_addresses() {
     local count=${#new_addresses[@]}
 
     if (( count == 0 )); then
-        status_info "No new addresses to try (all already tested)"
+        echo
+        status_info "No unconfirmed addresses to test (all have been tried before)"
         return 0
     fi
 
-    status_info "Found $count new addresses to test"
+    echo
+    printf "${C_BOLD}Testing addresses that have never successfully connected:${C_RESET}\n"
+    printf "  Total discovered:  %s addresses\n" "$(db_count_master)"
+    printf "  Already confirmed: %s addresses\n" "$(db_count_confirmed)"
+    printf "  ${C_INFO}To test now:       %s addresses${C_RESET}\n\n" "$count"
+
+    printf "${C_DIM}Note: This tries connecting to each address via 'addnode onetry'${C_RESET}\n"
+    printf "${C_DIM}Successful connections will be auto-confirmed.${C_RESET}\n"
     echo
 
     onetry_addresses "${new_addresses[@]}"

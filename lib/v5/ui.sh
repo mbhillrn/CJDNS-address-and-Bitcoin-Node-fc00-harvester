@@ -34,12 +34,13 @@ C_OUT='\033[38;5;205m'          # Pink (outbound)
 # ============================================================================
 print_box() {
     local title="$1"
-    local width=72
+    local width=70
+    local padding=$(( width - ${#title} ))
     printf "\n${C_HEADER}"
     printf '╔'
     printf '═%.0s' $(seq 1 $width)
     printf '╗\n'
-    printf "║ %-${width}s ║\n" "$title"
+    printf "║ %s%*s ║\n" "$title" "$padding" ""
     printf '╚'
     printf '═%.0s' $(seq 1 $width)
     printf '╝\n'
