@@ -72,6 +72,8 @@ run_harvester_mode() {
     if prompt_yn "Harvest remote nodestore (SSH)?"; then
         harvest_remote="yes"
         echo
+        status_info "Note: SSH key-based authentication required (passwordless login)"
+        echo
         read -r -p "Remote host(s) (comma-separated): " REMOTE_HOSTS
         read -r -p "SSH username (same for all): " REMOTE_USER
         export REMOTE_HOSTS REMOTE_USER HARVEST_REMOTE=yes
@@ -129,7 +131,10 @@ run_harvester_mode() {
 
         # Exit if run-once mode
         if [[ "$run_mode" == "1" ]]; then
+            echo
             log_success "Single pass complete"
+            echo
+            read -r -p "Press Enter to return to main menu..."
             break
         fi
 

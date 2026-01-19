@@ -38,19 +38,19 @@ C_UPLOAD='\033[38;5;218m'       # Light pink (upload)
 # ============================================================================
 print_box() {
     local title="$1"
-    local width=70
+    local width=72
     local title_len=${#title}
-    local padding=$(( width - title_len - 2 ))  # -2 for the spaces around title
+    local padding=$(( width - title_len - 2 ))  # -2 for spaces on both sides
 
     printf "\n${C_HEADER}"
     printf '╔'
-    printf '═%.0s' $(seq 1 $((width + 2)))
+    printf '═%.0s' $(seq 1 $width)
     printf '╗\n'
     printf '║ %s' "$title"
-    printf ' %.0s' $(seq 1 $padding)
+    printf '%*s' "$padding" ""
     printf ' ║\n'
     printf '╚'
-    printf '═%.0s' $(seq 1 $((width + 2)))
+    printf '═%.0s' $(seq 1 $width)
     printf '╝\n'
     printf "${C_RESET}\n"
 }

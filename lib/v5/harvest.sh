@@ -138,8 +138,12 @@ harvest_remote_nodestore() {
         while true; do
             local tmpjson="/tmp/cjdh_remote_${rhost}_p${page}.json"
 
-            # Fetch remote page via SSH
-            if ! ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no "${remote_user}@${rhost}" \
+            # Fetch remote page via SSH (with better error handling)
+            if ! ssh -o ConnectTimeout=5 \
+                     -o StrictHostKeyChecking=accept-new \
+                     -o BatchMode=yes \
+                     -o PasswordAuthentication=no \
+                     "${remote_user}@${rhost}" \
                 "cjdnstool -a 127.0.0.1 -p 11234 -P NONE cexec NodeStore_dumpTable --page=$page" >"$tmpjson" 2>/dev/null; then
                 rm -f "$tmpjson"
                 break
@@ -209,7 +213,7 @@ harvest_frontier() {
 
     print_section "Frontier Expansion"
 
-    show_progress "Running frontier expansion"
+    printf "  ${C_DIM}Running frontier expansion...${C_RESET} "
 
     local frontier_out="/tmp/cjdh_frontier.$$.txt"
     local frontier_log="/tmp/cjdh_frontier.$$.log"
@@ -217,23 +221,28 @@ harvest_frontier() {
     # Run frontier expansion (outputs addresses to stdout, progress to stderr)
     if cjdh_frontier_expand "$CJDNS_ADMIN_ADDR" "$CJDNS_ADMIN_PORT" 2000 \
         >"$frontier_out" 2>"$frontier_log"; then
-        show_progress_done
+        printf "${C_SUCCESS}done${C_RESET}\n"
     else
-        show_progress_fail
+        printf "${C_ERROR}failed${C_RESET}\n"
         rm -f "$frontier_out" "$frontier_log"
         return 0
     fi
 
     # Show progress from log
+    echo
     if [[ -s "$frontier_log" ]]; then
+        local keys_line=""
         while IFS= read -r line; do
             # Colorize frontier log lines
             if [[ "$line" == *"paths="* ]]; then
-                printf "${C_INFO}  %s${C_RESET}\n" "$line"
-            elif [[ "$line" == *"getPeers"* ]]; then
-                printf "${C_MUTED}  %s${C_RESET}\n" "$line"
-            elif [[ "$line" == *"key2ip6"* ]]; then
-                printf "${C_MUTED}  %s${C_RESET}\n" "$line"
+                printf "  ${C_INFO}%s${C_RESET}\n" "$line"
+            elif [[ "$line" == *"keys="* ]]; then
+                keys_line="$line"
+                local keys_count
+                keys_count="$(echo "$line" | sed -n 's/.*keys=\([0-9]\+\).*/\1/p')"
+                printf "  ${C_BOLD}${C_SUCCESS}Keys found: %s${C_RESET}\n" "$keys_count"
+            elif [[ "$line" == *"getPeers"* ]] || [[ "$line" == *"key2ip6"* ]]; then
+                printf "  ${C_MUTED}%s${C_RESET}\n" "$line"
             else
                 echo "  $line"
             fi
