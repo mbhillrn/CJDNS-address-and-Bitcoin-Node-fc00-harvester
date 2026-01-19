@@ -65,7 +65,7 @@ update_database_from_repo() {
 
     # Check if remote file is newer than local
     local remote_last_modified
-    remote_last_modified=$(curl -sI "$repo_url" | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r')
+    remote_last_modified=$(curl -sI "$repo_url" 2>/dev/null | grep -i '^last-modified:' | cut -d' ' -f2- | tr -d '\r' || true)
 
     if [[ -z "$remote_last_modified" ]]; then
         echo
