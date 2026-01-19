@@ -4,13 +4,13 @@
 
 ---
 
-## 💰 Support This Project
+## Support This Project
 
-If you find this tool useful, please consider donating to help keep development going:
+If you find this tool useful, please consider donating:
 
 **Bitcoin:** `bc1qy63057zemrskq0n02avq9egce4cpuuenm5ztf5`
 
-*(This is a hobby project I've been working on in my spare time - any support is greatly appreciated!)*
+Any amount is appreciated!
 
 ---
 
@@ -23,7 +23,7 @@ This is a tool I built over a couple months to discover Bitcoin Core nodes runni
 3. Testing each address to see if it's running Bitcoin Core
 4. Keeping track of everything in a local database
 
-I wrote this mostly as a hobby project to learn more about CJDNS and Bitcoin networking. Got a lot of help from AI tools (especially Claude!) to make the interface look nice and handle edge cases properly.
+I wrote this mostly as a hobby project to learn more about CJDNS and Bitcoin networking. Got a lot of help from AI to make the interface look nice and handle edge cases properly.
 
 ---
 
@@ -31,7 +31,7 @@ I wrote this mostly as a hobby project to learn more about CJDNS and Bitcoin net
 
 If you're running Bitcoin Core over CJDNS, you probably want to find other nodes to connect to. This tool automates that discovery process and maintains a database of known nodes so you don't have to manually hunt for peers.
 
-The included `state.db` database already has 295+ addresses I've discovered. You can use it as-is or start fresh.
+The included `state.db` database has many addresses I've discovered and update somewhat regularly. You can use it as-is or start fresh.
 
 ---
 
@@ -60,7 +60,7 @@ The script will auto-detect your Bitcoin Core and CJDNS settings, then present y
 2. **Onetry master list** - Test all discovered addresses
 3. **Onetry confirmed list** - Reconnect to known Bitcoin nodes
 
-Pick option 1 for normal operation. It'll loop forever scanning for addresses and testing new ones it finds.
+**First-time users:** Start with option 3 to quickly connect your Bitcoin node to the confirmed CJDNS addresses in the database. This gets you connected to known nodes right away. After that, you can run option 1 to continuously discover new addresses.
 
 ---
 
@@ -84,9 +84,9 @@ This is pretty niche (who has multiple CJDNS nodes on their LAN?) but it works g
 
 ## The Database (`state.db`)
 
-The included database has addresses I've been collecting. You can:
+The included database has addresses I've been collecting and update somewhat regularly. You can:
 
-- **Use it as-is** - Already has 295+ addresses and 27 confirmed Bitcoin nodes
+- **Use it as-is** - Already has many confirmed Bitcoin nodes
 - **Start fresh** - Just delete or rename `state.db` and it'll create a new one
 
 The database has two main lists:
@@ -211,7 +211,7 @@ Just open an issue or PR on GitHub.
 
 ## Credits
 
-Written by me (mbhillrn) over a couple months of spare time hacking. Got tons of help from Claude AI for:
+Written by mbhillrn over a couple months of spare time. Got tons of help from AI for:
 - Making the interface not look like trash
 - Fixing logic bugs I couldn't figure out
 - Adding all the pretty colors and progress bars
@@ -233,6 +233,6 @@ If this tool helped you discover Bitcoin nodes or you just think it's cool:
 
 **Bitcoin:** `bc1qy63057zemrskq0n02avq9egce4cpuuenm5ztf5`
 
-I'll keep updating the database as I find more addresses. Donations help motivate me to keep working on it!
+I'll keep updating the database as I find more addresses. Any amount is appreciated!
 
-Thanks for using my harvester! 🚀
+Thanks for using my harvester!

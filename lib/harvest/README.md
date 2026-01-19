@@ -26,4 +26,4 @@ Version 5 simplified everything down to ~1,500 lines with a much cleaner interfa
 
 ---
 
-**💰 Support this project:** `bc1qy63057zemrskq0n02avq9egce4cpuuenm5ztf5`
+**Support this project:** `bc1qy63057zemrskq0n02avq9egce4cpuuenm5ztf5`

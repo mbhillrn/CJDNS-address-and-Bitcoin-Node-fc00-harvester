@@ -22,4 +22,4 @@ Old v4 code is in `lib/harvest/` - kept for reference but not actively used.
 
 ---
 
-**💰 Support this project:** `bc1qy63057zemrskq0n02avq9egce4cpuuenm5ztf5`
+**Support this project:** `bc1qy63057zemrskq0n02avq9egce4cpuuenm5ztf5`
