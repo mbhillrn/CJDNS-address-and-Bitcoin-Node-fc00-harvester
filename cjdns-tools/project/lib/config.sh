@@ -1,18 +1,73 @@
 #!/usr/bin/env bash
 # Config Module - Safe manipulation of cjdns config files
 
+# Default backup directory (persistent, not /tmp)
+BACKUP_DIR="/etc/cjdns_backups"
+
 # Create backup of config file
 backup_config() {
     local config_file="$1"
-    local backup_dir="${2:-/tmp}"
+    local backup_dir="${2:-$BACKUP_DIR}"
 
-    mkdir -p "$backup_dir"
+    # Validate config before backing it up
+    if ! validate_config "$config_file"; then
+        print_warning "Config file has validation issues - backup may not be restorable"
+        if ! ask_yes_no "Create backup anyway?"; then
+            return 1
+        fi
+    fi
+
+    # Create backup directory if it doesn't exist
+    if ! mkdir -p "$backup_dir" 2>/dev/null; then
+        print_error "Cannot create backup directory: $backup_dir"
+        return 1
+    fi
 
     local timestamp=$(date +%Y%m%d_%H%M%S)
     local backup_file="$backup_dir/cjdroute_backup_$timestamp.conf"
 
     if cp "$config_file" "$backup_file"; then
         echo "$backup_file"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# List all backups in backup directory
+list_backups() {
+    local backup_dir="${1:-$BACKUP_DIR}"
+
+    if [ ! -d "$backup_dir" ]; then
+        return 1
+    fi
+
+    find "$backup_dir" -name "cjdroute_backup_*.conf" -type f 2>/dev/null | sort -r
+}
+
+# Restore config from backup
+restore_config() {
+    local backup_file="$1"
+    local config_file="$2"
+
+    if [ ! -f "$backup_file" ]; then
+        print_error "Backup file not found: $backup_file"
+        return 1
+    fi
+
+    # Validate backup before restoring
+    if ! validate_config "$backup_file"; then
+        print_error "Backup file is not a valid config"
+        return 1
+    fi
+
+    # Create a backup of current config before restoring
+    local safety_backup
+    if safety_backup=$(backup_config "$config_file" "$BACKUP_DIR/safety"); then
+        print_info "Created safety backup: $safety_backup"
+    fi
+
+    if cp "$backup_file" "$config_file"; then
         return 0
     else
         return 1

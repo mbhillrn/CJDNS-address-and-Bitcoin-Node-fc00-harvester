@@ -20,6 +20,7 @@ ADMIN_IP=""
 ADMIN_PORT=""
 ADMIN_PASSWORD=""
 WORK_DIR=""
+USE_IPV6=false  # User preference for IPv6 peers
 
 # Cleanup on exit
 cleanup() {
@@ -178,6 +179,7 @@ initialize() {
 show_menu() {
     print_header "CJDNS Peer Manager - Main Menu"
     echo "Config: $CJDNS_CONFIG"
+    echo "Backup directory: $BACKUP_DIR"
     echo
     echo "1) View current peer status"
     echo "2) Discover new peers from online sources"
@@ -185,6 +187,8 @@ show_menu() {
     echo "4) Add new peers to config"
     echo "5) Remove unresponsive peers"
     echo "6) Restart cjdns service"
+    echo "7) Backup config file"
+    echo "8) Restore config from backup"
     echo "0) Exit"
     echo
 }
@@ -224,6 +228,20 @@ view_peer_status() {
 discover_new_peers() {
     print_header "Discovering New Peers"
 
+    # Ask about IPv6
+    echo "Do you want to discover and use IPv6 peers?"
+    echo "  - Choose 'y' if you have IPv6 connectivity"
+    echo "  - Choose 'n' if you only use IPv4"
+    echo
+    if ask_yes_no "Discover IPv6 peers?"; then
+        USE_IPV6=true
+        print_success "IPv6 peers will be included"
+    else
+        USE_IPV6=false
+        print_info "Skipping IPv6 peers - only IPv4 will be used"
+    fi
+    echo
+
     local ipv4_peers="$WORK_DIR/discovered_ipv4.json"
     local ipv6_peers="$WORK_DIR/discovered_ipv6.json"
 
@@ -251,10 +269,17 @@ discover_new_peers() {
     local new_ipv6="$WORK_DIR/new_ipv6.json"
 
     local new_ipv4_count=$(filter_new_peers "$ipv4_peers" "$CJDNS_CONFIG" 0 "$new_ipv4")
-    local new_ipv6_count=$(filter_new_peers "$ipv6_peers" "$CJDNS_CONFIG" 1 "$new_ipv6")
-
     print_success "New IPv4 peers: $new_ipv4_count"
-    print_success "New IPv6 peers: $new_ipv6_count"
+
+    local new_ipv6_count=0
+    if [ "$USE_IPV6" = true ]; then
+        new_ipv6_count=$(filter_new_peers "$ipv6_peers" "$CJDNS_CONFIG" 1 "$new_ipv6")
+        print_success "New IPv6 peers: $new_ipv6_count"
+    else
+        # Create empty IPv6 file to avoid errors later
+        echo "{}" > "$new_ipv6"
+        print_info "IPv6 peers skipped (not enabled)"
+    fi
 
     if [ "$new_ipv4_count" -gt 0 ]; then
         echo
@@ -262,7 +287,7 @@ discover_new_peers() {
         show_peer_details "$new_ipv4" 5
     fi
 
-    if [ "$new_ipv6_count" -gt 0 ]; then
+    if [ "$USE_IPV6" = true ] && [ "$new_ipv6_count" -gt 0 ]; then
         echo
         print_subheader "Sample New IPv6 Peers"
         show_peer_details "$new_ipv6" 5
@@ -294,7 +319,11 @@ test_peer_connectivity_menu() {
 
     echo "Discovered peers available for testing:"
     echo "  IPv4: $total_ipv4"
-    echo "  IPv6: $total_ipv6"
+    if [ "$USE_IPV6" = true ]; then
+        echo "  IPv6: $total_ipv6"
+    else
+        echo "  IPv6: (disabled)"
+    fi
     echo
 
     if ! ask_yes_no "Test connectivity to discovered peers? (This may take several minutes)"; then
@@ -344,8 +373,8 @@ test_peer_connectivity_menu() {
         print_success "IPv4: $active active out of $tested tested"
     fi
 
-    # Test IPv6 peers
-    if [ "$total_ipv6" -gt 0 ]; then
+    # Test IPv6 peers (only if enabled)
+    if [ "$USE_IPV6" = true ] && [ "$total_ipv6" -gt 0 ]; then
         print_subheader "Testing IPv6 Peers"
 
         local tested=0
@@ -406,10 +435,14 @@ add_peers_menu() {
 
     echo "Active peers available to add:"
     echo "  IPv4: $count_ipv4"
-    echo "  IPv6: $count_ipv6"
+    if [ "$USE_IPV6" = true ]; then
+        echo "  IPv6: $count_ipv6"
+    else
+        echo "  IPv6: (disabled)"
+    fi
     echo
 
-    if [ "$count_ipv4" -eq 0 ] && [ "$count_ipv6" -eq 0 ]; then
+    if [ "$count_ipv4" -eq 0 ] && ([ "$USE_IPV6" = false ] || [ "$count_ipv6" -eq 0 ]); then
         print_warning "No active peers to add"
         echo
         read -p "Press Enter to continue..."
@@ -422,19 +455,27 @@ add_peers_menu() {
         show_peer_details "$active_ipv4" 3
     fi
 
-    if [ "$count_ipv6" -gt 0 ]; then
+    if [ "$USE_IPV6" = true ] && [ "$count_ipv6" -gt 0 ]; then
         print_subheader "Sample Active IPv6 Peers"
         show_peer_details "$active_ipv6" 3
     fi
+
+    echo
+    echo "You are about to add:"
+    echo "  - $count_ipv4 IPv4 peers"
+    if [ "$USE_IPV6" = true ]; then
+        echo "  - $count_ipv6 IPv6 peers"
+    fi
+    echo
 
     if ! ask_yes_no "Add these peers to your config?"; then
         return
     fi
 
-    # Backup config
+    # Backup config (to persistent location, not /tmp)
     print_subheader "Creating Backup"
     local backup
-    if backup=$(backup_config "$CJDNS_CONFIG" "$WORK_DIR"); then
+    if backup=$(backup_config "$CJDNS_CONFIG"); then
         print_success "Backup created: $backup"
     else
         print_error "Failed to create backup"
@@ -457,7 +498,7 @@ add_peers_menu() {
         fi
     fi
 
-    if [ "$count_ipv6" -gt 0 ]; then
+    if [ "$USE_IPV6" = true ] && [ "$count_ipv6" -gt 0 ]; then
         if add_peers_to_config "$temp_config" "$active_ipv6" 1 "$temp_config.new"; then
             mv "$temp_config.new" "$temp_config"
             print_success "Added $count_ipv6 IPv6 peers"
@@ -515,9 +556,9 @@ remove_unresponsive_peers() {
         return
     fi
 
-    # Backup
+    # Backup (to persistent location)
     local backup
-    if backup=$(backup_config "$CJDNS_CONFIG" "$WORK_DIR"); then
+    if backup=$(backup_config "$CJDNS_CONFIG"); then
         print_success "Backup created: $backup"
     else
         print_error "Failed to create backup"
@@ -573,6 +614,105 @@ restart_service() {
     read -p "Press Enter to continue..."
 }
 
+# Backup config manually
+backup_config_menu() {
+    print_header "Backup Config File"
+
+    echo "Current config: $CJDNS_CONFIG"
+    echo "Backup directory: $BACKUP_DIR"
+    echo
+
+    if ! ask_yes_no "Create a backup of your current config?"; then
+        return
+    fi
+
+    local backup
+    if backup=$(backup_config "$CJDNS_CONFIG"); then
+        print_success "Backup created successfully"
+        echo
+        echo "Backup location: $backup"
+        echo "Backup size: $(ls -lh "$backup" | awk '{print $5}')"
+    else
+        print_error "Failed to create backup"
+    fi
+
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Restore config from backup
+restore_config_menu() {
+    print_header "Restore Config from Backup"
+
+    echo "Available backups in $BACKUP_DIR:"
+    echo
+
+    local backups
+    mapfile -t backups < <(list_backups)
+
+    if [ ${#backups[@]} -eq 0 ]; then
+        print_warning "No backups found in $BACKUP_DIR"
+        echo
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Show backups with numbers
+    for i in "${!backups[@]}"; do
+        local backup="${backups[$i]}"
+        local timestamp=$(basename "$backup" | sed 's/cjdroute_backup_\(.*\)\.conf/\1/')
+        local size=$(ls -lh "$backup" | awk '{print $5}')
+        echo "  $((i+1))) $timestamp ($size)"
+    done
+
+    echo
+    echo "  0) Cancel"
+    echo
+
+    local choice
+    while true; do
+        read -p "Select backup to restore (0-${#backups[@]}): " choice
+
+        if [ "$choice" = "0" ]; then
+            return
+        fi
+
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#backups[@]} ]; then
+            break
+        else
+            print_error "Invalid selection"
+        fi
+    done
+
+    local selected_backup="${backups[$((choice-1))]}"
+
+    echo
+    print_warning "This will replace your current config with:"
+    echo "  $selected_backup"
+    echo
+    echo "Your current config will be backed up first as a safety measure."
+    echo
+
+    if ! ask_yes_no "Are you sure you want to restore this backup?"; then
+        return
+    fi
+
+    if restore_config "$selected_backup" "$CJDNS_CONFIG"; then
+        print_success "Config restored successfully"
+        echo
+        print_info "You should restart cjdns for changes to take effect"
+
+        if ask_yes_no "Restart cjdns now?"; then
+            restart_service
+        fi
+    else
+        print_error "Failed to restore config"
+    fi
+
+    echo
+    read -p "Press Enter to continue..."
+}
+
 # Main program
 main() {
     # Initialize
@@ -603,6 +743,12 @@ main() {
                 ;;
             6)
                 restart_service
+                ;;
+            7)
+                backup_config_menu
+                ;;
+            8)
+                restore_config_menu
                 ;;
             0)
                 print_success "Goodbye!"
