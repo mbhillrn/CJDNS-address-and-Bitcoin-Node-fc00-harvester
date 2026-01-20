@@ -42,11 +42,23 @@ add_peers_to_config() {
     local interface_index="$3"
     local temp_config="$4"
 
-    # Merge peers into the specified interface
+    # First, ensure the interface has a connectTo field
+    # If it doesn't exist, create it as an empty object
+    jq --argjson idx "$interface_index" '
+        if .interfaces.UDPInterface[$idx].connectTo == null then
+            .interfaces.UDPInterface[$idx].connectTo = {}
+        else
+            .
+        end
+    ' "$config_file" > "$temp_config.tmp"
+
+    # Now merge peers into the interface
     # This preserves ALL fields from the peers_json without modification
-    jq --slurpfile new_peers "$peers_json" \
-        ".interfaces.UDPInterface[$interface_index].connectTo += \$new_peers[0]" \
-        "$config_file" > "$temp_config"
+    jq --slurpfile new_peers "$peers_json" --argjson idx "$interface_index" \
+        '.interfaces.UDPInterface[$idx].connectTo += $new_peers[0]' \
+        "$temp_config.tmp" > "$temp_config"
+
+    rm -f "$temp_config.tmp"
 
     return $?
 }
@@ -56,7 +68,10 @@ get_peer_count() {
     local config_file="$1"
     local interface_index="$2"
 
-    jq ".interfaces.UDPInterface[$interface_index].connectTo | length" "$config_file" 2>/dev/null || echo 0
+    # Return 0 if connectTo doesn't exist or is null
+    jq --argjson idx "$interface_index" \
+        '.interfaces.UDPInterface[$idx].connectTo // {} | length' \
+        "$config_file" 2>/dev/null || echo 0
 }
 
 # Remove peers from config by address
