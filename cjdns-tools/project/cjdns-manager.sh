@@ -25,6 +25,7 @@ source "$SCRIPT_DIR/lib/peers.sh"
 source "$SCRIPT_DIR/lib/config.sh"
 source "$SCRIPT_DIR/lib/database.sh"
 source "$SCRIPT_DIR/lib/master_list.sh"
+source "$SCRIPT_DIR/lib/editor.sh"
 
 # Global variables (will be set during initialization)
 CJDNS_CONFIG=""
@@ -250,7 +251,7 @@ show_menu() {
     echo
     echo "1) Peer Adding Wizard (Recommended)"
     echo "2) Discover & Preview Peers"
-    echo "3) Add Single Peer"
+    echo "3) Edit Config File"
     echo "4) Remove Peers"
     echo "5) View Peer Status"
     echo "6) Maintenance"
@@ -1478,7 +1479,7 @@ main() {
         case "$choice" in
             1) peer_adding_wizard ;;
             2) discover_preview ;;
-            3) add_single_peer ;;
+            3) config_editor_menu ;;
             4) remove_peers_menu ;;
             5) view_peer_status ;;
             6) maintenance_menu ;;
