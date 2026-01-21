@@ -4,6 +4,17 @@
 
 set -euo pipefail
 
+# Check for sudo/root access - Required for /etc/ operations
+if [ "$EUID" -ne 0 ]; then
+    echo "This script requires root privileges to:"
+    echo "  - Access and modify cjdns config files in /etc/"
+    echo "  - Create backups in /etc/cjdns_backups/"
+    echo "  - Restart cjdns service"
+    echo
+    echo "Re-running with sudo..."
+    exec sudo "$0" "$@"
+fi
+
 # Get script directory (for portable relative paths)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -178,11 +189,14 @@ initialize() {
     # Initialize database and master list
     print_subheader "Initializing Database & Master List"
 
+    # Create backup directory with proper permissions
     if ! mkdir -p "$BACKUP_DIR" 2>/dev/null; then
         print_error "Cannot create backup directory: $BACKUP_DIR"
-        print_info "You may need to run this script with sudo"
         exit 1
     fi
+
+    # Ensure backup directory has proper permissions
+    chmod 755 "$BACKUP_DIR" 2>/dev/null
 
     if init_database; then
         print_success "Peer tracking database ready"
@@ -620,7 +634,7 @@ wizard_add_peers() {
 
     # Validate and save
     if validate_config "$temp_config"; then
-        sudo cp "$temp_config" "$CJDNS_CONFIG"
+        cp "$temp_config" "$CJDNS_CONFIG"
         print_success "Config updated successfully! Added $total_added peers."
 
         if ask_yes_no "Restart cjdns service now to apply changes?"; then
@@ -667,7 +681,7 @@ wizard_apply_updates() {
     fi
 
     if validate_config "$temp_config"; then
-        sudo cp "$temp_config" "$CJDNS_CONFIG"
+        cp "$temp_config" "$CJDNS_CONFIG"
         print_success "Config updated successfully!"
 
         if ask_yes_no "Restart cjdns now?"; then
@@ -707,7 +721,7 @@ wizard_remove_unresponsive() {
     fi
 
     if validate_config "$temp_config"; then
-        sudo cp "$temp_config" "$CJDNS_CONFIG"
+        cp "$temp_config" "$CJDNS_CONFIG"
         print_success "Removed $count_ipv4 IPv4 and $count_ipv6 IPv6 unresponsive peers"
     fi
 }
@@ -826,7 +840,7 @@ add_single_peer() {
     local temp_config="$WORK_DIR/config.tmp"
     if add_peers_to_config "$CJDNS_CONFIG" "$temp_peer" "$interface_index" "$temp_config"; then
         if validate_config "$temp_config"; then
-            sudo cp "$temp_config" "$CJDNS_CONFIG"
+            cp "$temp_config" "$CJDNS_CONFIG"
             print_success "Peer added successfully!"
 
             if ask_yes_no "Restart cjdns now?"; then
@@ -922,7 +936,7 @@ remove_peers_menu() {
     mv "$temp_config.new" "$temp_config"
 
     if validate_config "$temp_config"; then
-        sudo cp "$temp_config" "$CJDNS_CONFIG"
+        cp "$temp_config" "$CJDNS_CONFIG"
         print_success "Peers removed successfully!"
 
         if ask_yes_no "Restart cjdns now?"; then
@@ -1226,7 +1240,7 @@ import_peers_menu() {
     fi
 
     if validate_config "$temp_config"; then
-        sudo cp "$temp_config" "$CJDNS_CONFIG"
+        cp "$temp_config" "$CJDNS_CONFIG"
         print_success "Import complete!"
 
         if ask_yes_no "Restart cjdns now?"; then
@@ -1410,7 +1424,7 @@ restart_service() {
 
     echo "Restarting $CJDNS_SERVICE..."
 
-    if sudo systemctl restart "$CJDNS_SERVICE"; then
+    if systemctl restart "$CJDNS_SERVICE"; then
         print_success "Service restarted"
 
         # Poll for connection with 2s intervals, max 10s
