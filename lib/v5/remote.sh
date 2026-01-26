@@ -106,7 +106,7 @@ configure_remote_hosts() {
         local host
         while true; do
             if [[ -n "$default_host" ]]; then
-                read -r -p "Remote host address (IP or hostname) [empty to finish] (Enter for $default_host): " host
+                read -r -p "Remote host address (IP or hostname) (Enter for $default_host): " host
             else
                 read -r -p "Remote host address (IP or hostname) [empty to finish]: " host
             fi
