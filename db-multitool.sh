@@ -89,15 +89,44 @@ status_info() {
 # ============================================================================
 check_deps() {
     local missing=()
+    local packages=()
 
-    command -v sqlite3 >/dev/null 2>&1 || missing+=("sqlite3")
-    command -v sshpass >/dev/null 2>&1 || missing+=("sshpass")
-    command -v scp >/dev/null 2>&1 || missing+=("scp (openssh-client)")
+    if ! command -v sqlite3 >/dev/null 2>&1; then
+        missing+=("sqlite3")
+        packages+=("sqlite3")
+    fi
+    if ! command -v sshpass >/dev/null 2>&1; then
+        missing+=("sshpass")
+        packages+=("sshpass")
+    fi
+    if ! command -v scp >/dev/null 2>&1; then
+        missing+=("scp")
+        packages+=("openssh-client")
+    fi
 
     if [[ ${#missing[@]} -gt 0 ]]; then
-        status_error "Missing required dependencies: ${missing[*]}"
-        echo "  Install with: sudo apt-get install ${missing[*]}"
-        exit 1
+        status_warn "Missing dependencies: ${missing[*]}"
+        echo
+        printf "  Would you like to install them now? [Y/n]: "
+        read -r install_answer
+        install_answer="${install_answer:-y}"
+
+        if [[ "$install_answer" == "y" || "$install_answer" == "Y" ]]; then
+            echo
+            printf "  Installing ${packages[*]}..."
+            if sudo apt-get install -y "${packages[@]}" >/dev/null 2>&1; then
+                printf " ${C_SUCCESS}done${C_RESET}\n"
+                echo
+            else
+                printf " ${C_ERROR}failed${C_RESET}\n"
+                status_error "Could not install dependencies. Try manually:"
+                echo "  sudo apt-get install ${packages[*]}"
+                exit 1
+            fi
+        else
+            status_info "Install them manually with: sudo apt-get install ${packages[*]}"
+            exit 1
+        fi
     fi
 }
 
