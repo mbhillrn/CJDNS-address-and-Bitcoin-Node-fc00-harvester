@@ -542,14 +542,16 @@ check_database_and_show_stats() {
 # ============================================================================
 show_main_menu() {
     clear
-    print_box "CJDNS ADDRESS HARVESTER v5"
+    print_box "CJDNS ADDRESS HARVESTER (v5) MAIN MENU"
 
     echo
-    printf "${C_BOLD}Choose operation:${C_RESET}\n\n"
+    printf "${C_BOLD}CJDNS Address Harvester:${C_RESET}\n\n"
     printf "  ${C_SUCCESS}1)${C_RESET} Run Harvester\n"
     printf "     └─ Harvest local nodestore and frontier search (with options to harvest\n"
     printf "        from other machines on local network), then attempt Bitcoin Core\n"
-    printf "        connection via onetry\n\n"
+    printf "        connection via onetry. Note: Now with optional confirmed list retries!\n\n"
+
+    printf "${C_BOLD}Bitcoin Core Onetry Operations:${C_RESET}\n\n"
     printf "  ${C_INFO}2)${C_RESET} Bitcoin Core: Attempt connection to all known CONFIRMED CJDNS Bitcoin\n"
     printf "     Node Addresses\n"
     printf "     └─ Retry database addresses with known associated Bitcoin nodes\n\n"
@@ -558,20 +560,85 @@ show_main_menu() {
     printf "     └─ Try connecting to all discovered addresses. EXHAUSTIVE, may be time\n"
     printf "        consuming dependent upon size of database. Recommended only if\n"
     printf "        you're bored :)\n\n"
-    printf "  ${C_SUCCESS}4)${C_RESET} Database Updater: Check repo for newly confirmed Bitcoin node addresses\n"
+
+    printf "${C_BOLD}Database Settings:${C_RESET}\n\n"
+    printf "  ${C_INFO}4)${C_RESET} See Database Maintenance Menu\n"
+    printf "     └─ Updater, text file exporter, backup, restore, backup file maintenance,\n"
+    printf "        delete db (reset)\n\n"
+
+    printf "${C_BOLD}Exit:${C_RESET}\n\n"
+    printf "  ${C_ERROR}0)${C_RESET} Exit\n\n"
+}
+
+show_maintenance_menu() {
+    clear
+    print_box "CJDNS ADDRESS HARVESTER (v5) MAINTENANCE MENU"
+
+    echo
+    printf "${C_BOLD}Database Settings/Maintenance:${C_RESET}\n\n"
+    printf "  ${C_SUCCESS}1)${C_RESET} Database Updater: Check repo for newly confirmed Bitcoin node addresses\n"
     printf "     └─ Downloads latest seeddb.db from GitHub and adds any new confirmed\n"
     printf "        addresses to your database (will not erase, only add if new)\n\n"
-    printf "  ${C_MUTED}5)${C_RESET} Database: Create txt file showing all discovered CJDNS addresses\n"
+    printf "  ${C_MUTED}2)${C_RESET} Database: Create txt file showing all discovered CJDNS addresses\n"
     printf "     └─ Creates cjdns-bitcoin-seed-list.txt in program directory\n\n"
-    printf "  ${C_INFO}6)${C_RESET} Database: Backup current database\n"
+    printf "  ${C_INFO}3)${C_RESET} Database: Backup current database\n"
     printf "     └─ Creates timestamped backup in bak/ directory\n\n"
-    printf "  ${C_WARNING}7)${C_RESET} Database: Restore from backup\n"
+    printf "  ${C_WARNING}4)${C_RESET} Database: Restore from backup\n"
     printf "     └─ Restore database from previous backup\n\n"
-    printf "  ${C_ERROR}8)${C_RESET} Database: Delete backup databases\n"
+    printf "  ${C_ERROR}5)${C_RESET} Database: Delete backup databases\n"
     printf "     └─ Delete individual or all backup databases\n\n"
-    printf "  ${C_ERROR}9)${C_RESET} Database: Delete current database (state.db)\n"
+    printf "  ${C_ERROR}6)${C_RESET} Database: Delete current database (state.db)\n"
     printf "     └─ Deletes/resets current database, prompting setup on next run\n\n"
-    printf "  ${C_ERROR}0)${C_RESET} Exit\n\n"
+
+    printf "${C_BOLD}Exit:${C_RESET}\n\n"
+    printf "  ${C_MUTED}0)${C_RESET} Return to Main Menu\n\n"
+}
+
+run_maintenance_menu() {
+    while true; do
+        show_maintenance_menu
+
+        local choice
+        read -r -p "Choice [1-6, 0=back]: " choice
+
+        case "$choice" in
+            1)
+                update_database_from_repo
+                echo
+                read -r -p "Press Enter to continue..."
+                ;;
+            2)
+                export_database_to_txt
+                echo
+                read -r -p "Press Enter to continue..."
+                ;;
+            3)
+                backup_database
+                echo
+                read -r -p "Press Enter to continue..."
+                ;;
+            4)
+                restore_database
+                echo
+                read -r -p "Press Enter to continue..."
+                ;;
+            5)
+                delete_backups
+                echo
+                read -r -p "Press Enter to continue..."
+                ;;
+            6)
+                delete_database
+                ;;
+            0)
+                return 0
+                ;;
+            *)
+                status_error "Invalid choice: $choice"
+                sleep 2
+                ;;
+        esac
+    done
 }
 
 # ============================================================================
@@ -665,7 +732,14 @@ run_harvester_mode() {
     echo "  0) Exit back to main menu"
     echo
     local run_mode
-    read -r -p "Choice [1/2/3/0]: " run_mode
+    while true; do
+        read -r -p "Choice [1/2/3/0]: " run_mode
+        if [[ "$run_mode" =~ ^[0123]$ ]]; then
+            break
+        else
+            printf "${C_ERROR}Invalid choice. Please enter 0, 1, 2, or 3.${C_RESET}\n"
+        fi
+    done
 
     # Handle exit option
     if [[ "$run_mode" == "0" ]]; then
@@ -828,7 +902,7 @@ main() {
         show_main_menu
 
         local choice
-        read -r -p "Choice [1-9, 0=exit]: " choice
+        read -r -p "Choice [1-4, 0=exit]: " choice
 
         case "$choice" in
             1)
@@ -845,32 +919,7 @@ main() {
                 read -r -p "Press Enter to continue..."
                 ;;
             4)
-                update_database_from_repo
-                echo
-                read -r -p "Press Enter to continue..."
-                ;;
-            5)
-                export_database_to_txt
-                echo
-                read -r -p "Press Enter to continue..."
-                ;;
-            6)
-                backup_database
-                echo
-                read -r -p "Press Enter to continue..."
-                ;;
-            7)
-                restore_database
-                echo
-                read -r -p "Press Enter to continue..."
-                ;;
-            8)
-                delete_backups
-                echo
-                read -r -p "Press Enter to continue..."
-                ;;
-            9)
-                delete_database
+                run_maintenance_menu
                 ;;
             0)
                 echo
