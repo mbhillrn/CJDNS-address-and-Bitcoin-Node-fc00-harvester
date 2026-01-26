@@ -732,7 +732,14 @@ run_harvester_mode() {
     echo "  0) Exit back to main menu"
     echo
     local run_mode
-    read -r -p "Choice [1/2/3/0]: " run_mode
+    while true; do
+        read -r -p "Choice [1/2/3/0]: " run_mode
+        if [[ "$run_mode" =~ ^[0123]$ ]]; then
+            break
+        else
+            printf "${C_ERROR}Invalid choice. Please enter 0, 1, 2, or 3.${C_RESET}\n"
+        fi
+    done
 
     # Handle exit option
     if [[ "$run_mode" == "0" ]]; then
