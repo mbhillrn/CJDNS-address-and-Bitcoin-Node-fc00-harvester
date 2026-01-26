@@ -143,195 +143,101 @@ cleanup() {
 trap cleanup EXIT
 
 # ============================================================================
-# Config File Functions
+# Config File Functions (just stores defaults for convenience)
 # ============================================================================
-load_config() {
+LAST_IP=""
+LAST_PATH="~/state.db"
+LAST_USER=""
+
+load_defaults() {
     if [[ -f "$CONFIG_FILE" ]]; then
-        return 0
+        # Source the config file to load LAST_* variables
+        source "$CONFIG_FILE" 2>/dev/null || true
     fi
-    return 1
 }
 
-save_config() {
-    local save_passwords="$1"
-
-    # Create config file
-    {
-        echo "# db-multitool saved remotes"
-        echo "# Generated: $(date)"
-        echo ""
-
-        local idx=0
-        for host in "${REMOTE_HOSTS[@]}"; do
-            echo "REMOTE_HOST[$idx]=\"$host\""
-            echo "REMOTE_PATH[$idx]=\"${REMOTE_PATHS[$idx]}\""
-            echo "REMOTE_USER[$idx]=\"${REMOTE_USERS[$idx]}\""
-            if [[ "$save_passwords" == "y" ]]; then
-                echo "REMOTE_PASS[$idx]=\"${REMOTE_PASSWORDS[$idx]}\""
-            fi
-            echo ""
-            idx=$((idx + 1))
-        done
-    } > "$CONFIG_FILE"
-
-    chmod 600 "$CONFIG_FILE"  # Restrict permissions if passwords saved
-}
-
-show_saved_remotes() {
-    if [[ ! -f "$CONFIG_FILE" ]]; then
-        return 1
+save_defaults() {
+    # Save the last used values as defaults for next time
+    if [[ -n "${REMOTE_HOSTS[0]:-}" ]]; then
+        {
+            echo "# db-multitool defaults"
+            echo "LAST_IP=\"${REMOTE_HOSTS[0]}\""
+            echo "LAST_PATH=\"${REMOTE_PATHS[0]}\""
+            echo "LAST_USER=\"${REMOTE_USERS[0]}\""
+        } > "$CONFIG_FILE"
     fi
-
-    print_section "Saved Remote Machines"
-    echo
-
-    # Parse config file
-    local idx=0
-    local found=0
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^REMOTE_HOST\[([0-9]+)\]=\"(.*)\"$ ]]; then
-            idx="${BASH_REMATCH[1]}"
-            local host="${BASH_REMATCH[2]}"
-            found=1
-            # Look for corresponding user and path
-            local user path has_pass
-            user=$(grep "REMOTE_USER\[$idx\]" "$CONFIG_FILE" | sed 's/.*="\(.*\)"/\1/')
-            path=$(grep "REMOTE_PATH\[$idx\]" "$CONFIG_FILE" | sed 's/.*="\(.*\)"/\1/')
-            has_pass=$(grep -c "REMOTE_PASS\[$idx\]" "$CONFIG_FILE" || true)
-
-            local pass_indicator=""
-            if [[ "$has_pass" -gt 0 ]]; then
-                pass_indicator=" ${C_MUTED}(password saved)${C_RESET}"
-            fi
-
-            printf "  ${C_BOLD}%d.${C_RESET} %s@%s:%s%b\n" "$((idx + 1))" "$user" "$host" "$path" "$pass_indicator"
-        fi
-    done < "$CONFIG_FILE"
-
-    if [[ $found -eq 0 ]]; then
-        return 1
-    fi
-
-    echo
-    return 0
-}
-
-load_saved_remotes() {
-    if [[ ! -f "$CONFIG_FILE" ]]; then
-        return 1
-    fi
-
-    # Parse and load
-    local idx=0
-    local max_idx=-1
-
-    # Find max index
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^REMOTE_HOST\[([0-9]+)\] ]]; then
-            local i="${BASH_REMATCH[1]}"
-            if [[ $i -gt $max_idx ]]; then
-                max_idx=$i
-            fi
-        fi
-    done < "$CONFIG_FILE"
-
-    if [[ $max_idx -lt 0 ]]; then
-        return 1
-    fi
-
-    # Load each remote
-    for idx in $(seq 0 $max_idx); do
-        local host user path pass
-        host=$(grep "REMOTE_HOST\[$idx\]" "$CONFIG_FILE" 2>/dev/null | sed 's/.*="\(.*\)"/\1/' || true)
-        user=$(grep "REMOTE_USER\[$idx\]" "$CONFIG_FILE" 2>/dev/null | sed 's/.*="\(.*\)"/\1/' || true)
-        path=$(grep "REMOTE_PATH\[$idx\]" "$CONFIG_FILE" 2>/dev/null | sed 's/.*="\(.*\)"/\1/' || true)
-        pass=$(grep "REMOTE_PASS\[$idx\]" "$CONFIG_FILE" 2>/dev/null | sed 's/.*="\(.*\)"/\1/' || true)
-
-        if [[ -n "$host" && -n "$user" ]]; then
-            REMOTE_HOSTS+=("$host")
-            REMOTE_USERS+=("$user")
-            REMOTE_PATHS+=("${path:-~/state.db}")
-
-            # If no saved password, prompt for it
-            if [[ -z "$pass" ]]; then
-                printf "  Password for %s@%s: " "$user" "$host"
-                read -rs pass
-                echo
-            fi
-            REMOTE_PASSWORDS+=("$pass")
-        fi
-    done
-
-    return 0
 }
 
 # ============================================================================
 # Collect Remote Machine Info
 # ============================================================================
 collect_remotes() {
-    print_section "Remote Machines"
-    echo
+    # Load saved defaults
+    load_defaults
 
-    # Check for saved config
-    if show_saved_remotes; then
-        printf "  Use saved remote machines? [Y/n]: "
-        read -r use_saved
-        use_saved="${use_saved:-y}"
-
-        if [[ "$use_saved" == "y" || "$use_saved" == "Y" ]]; then
-            load_saved_remotes
-            status_ok "Loaded ${#REMOTE_HOSTS[@]} saved remote(s)"
-
-            echo
-            printf "  Add more remote machines? [y/N]: "
-            read -r add_more_after_load
-            if [[ "$add_more_after_load" != "y" && "$add_more_after_load" != "Y" ]]; then
-                return 0
-            fi
-        fi
-    fi
-
-    # Manual entry
-    local add_more="y"
-    local idx=$((${#REMOTE_HOSTS[@]} + 1))
-
+    print_section "Add Remote Machines"
     echo
     status_info "Enter details for each remote machine with a state.db to merge."
+    status_info "Press Enter to use default values shown in [brackets]."
     status_info "Leave IP blank and press Enter when done adding machines."
     echo
+
+    local add_more="y"
+    local idx=1
 
     while [[ "$add_more" == "y" || "$add_more" == "Y" ]]; do
         print_divider
         printf "${C_BOLD}Remote Machine #%d${C_RESET}\n" "$idx"
         echo
 
-        # IP Address
-        printf "  IP Address (or hostname): "
+        # IP Address (show default if we have one)
+        if [[ -n "$LAST_IP" ]]; then
+            printf "  IP Address (or hostname) [%s]: " "$LAST_IP"
+        else
+            printf "  IP Address (or hostname): "
+        fi
         read -r ip
+
+        # Use default if empty and we have one
+        if [[ -z "$ip" && -n "$LAST_IP" && $idx -eq 1 ]]; then
+            ip="$LAST_IP"
+            printf "  ${C_MUTED}Using: %s${C_RESET}\n" "$ip"
+        fi
 
         # Empty IP means done
         if [[ -z "$ip" ]]; then
-            if [[ $idx -eq 1 && ${#REMOTE_HOSTS[@]} -eq 0 ]]; then
+            if [[ ${#REMOTE_HOSTS[@]} -eq 0 ]]; then
                 status_warn "No remote machines added. Will only work with local database."
             fi
             break
         fi
 
         # Path to state.db
-        printf "  Path to state.db on remote [~/state.db]: "
+        printf "  Path to state.db [%s]: " "$LAST_PATH"
         read -r dbpath
-        dbpath="${dbpath:-~/state.db}"
+        if [[ -z "$dbpath" ]]; then
+            dbpath="$LAST_PATH"
+            printf "  ${C_MUTED}Using: %s${C_RESET}\n" "$dbpath"
+        fi
 
         # Username
-        printf "  SSH Username: "
+        if [[ -n "$LAST_USER" ]]; then
+            printf "  SSH Username [%s]: " "$LAST_USER"
+        else
+            printf "  SSH Username: "
+        fi
         read -r username
+        if [[ -z "$username" && -n "$LAST_USER" ]]; then
+            username="$LAST_USER"
+            printf "  ${C_MUTED}Using: %s${C_RESET}\n" "$username"
+        fi
 
         if [[ -z "$username" ]]; then
             status_error "Username is required. Skipping this machine."
             continue
         fi
 
-        # Password
+        # Password (always prompt, never save)
         printf "  SSH Password: "
         read -rs password
         echo
@@ -347,6 +253,11 @@ collect_remotes() {
         REMOTE_USERS+=("$username")
         REMOTE_PASSWORDS+=("$password")
 
+        # Update defaults for next prompt
+        LAST_IP="$ip"
+        LAST_PATH="$dbpath"
+        LAST_USER="$username"
+
         status_ok "Added: $username@$ip:$dbpath"
         idx=$((idx + 1))
 
@@ -355,6 +266,9 @@ collect_remotes() {
         read -r add_more
         add_more="${add_more:-n}"
     done
+
+    # Save defaults for next run
+    save_defaults
 }
 
 # ============================================================================
@@ -768,29 +682,6 @@ push_to_remotes() {
 }
 
 # ============================================================================
-# Offer to Save Config
-# ============================================================================
-offer_save_config() {
-    if [[ ${#REMOTE_HOSTS[@]} -eq 0 ]]; then
-        return 0
-    fi
-
-    echo
-    printf "${C_BOLD}Save these remote machines for next time?${C_RESET} [Y/n]: "
-    read -r save_answer
-    save_answer="${save_answer:-y}"
-
-    if [[ "$save_answer" == "y" || "$save_answer" == "Y" ]]; then
-        printf "  Also save passwords? (stored in plaintext) [y/N]: "
-        read -r save_pass
-        save_pass="${save_pass:-n}"
-
-        save_config "$save_pass"
-        status_ok "Saved to $CONFIG_FILE"
-    fi
-}
-
-# ============================================================================
 # Main
 # ============================================================================
 main() {
@@ -815,7 +706,6 @@ main() {
 
     # Show summary
     if ! show_summary; then
-        offer_save_config
         echo
         status_info "Exiting - nothing to do."
         exit 0
@@ -840,12 +730,9 @@ main() {
             fi
         fi
 
-        offer_save_config
-
         echo
         status_ok "All done!"
     else
-        offer_save_config
         echo
         status_info "Merge cancelled. No changes made."
     fi
