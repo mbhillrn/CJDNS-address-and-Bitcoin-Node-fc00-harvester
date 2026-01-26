@@ -334,7 +334,11 @@ harvest_remote_frontier() {
 
         # Cleanup
         rm -f "$frontier_out" "$frontier_log"
-        exec_ssh_command "$idx" "rm -f $remote_script" >/dev/null 2>&1
+        # Remote cleanup with retry - non-critical, don't let it kill the loop
+        if ! exec_ssh_command "$idx" "rm -f $remote_script" >/dev/null 2>&1; then
+            sleep 5
+            exec_ssh_command "$idx" "rm -f $remote_script" >/dev/null 2>&1 || true
+        fi
     done
 }
 
