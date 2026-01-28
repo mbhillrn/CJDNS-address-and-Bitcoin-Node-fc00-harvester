@@ -6,20 +6,17 @@
 
 ## Support This Project
 
-If you find this tool useful, support is appreciated:
-
 **Bitcoin:** `bc1qy63057zemrskq0n02avq9egce4cpuuenm5ztf5`
 
 ---
 
 ## What Is This?
 
-This is a tool developed to discover Bitcoin Core nodes running on CJDNS. It works by:
+This is a tool developed to make it easier to discover Bitcoin Core nodes running on CJDNS. It works by:
 
-1. Scanning your local CJDNS NodeStore for addresses
-2. Using "frontier expansion" to discover more nodes through peers
-3. Testing each address to see if it's running Bitcoin Core
-4. Keeping track of everything in a local database
+1. Utilizing cjdnstools to scan local CJDNS NodeStore (and more!) for addresses.
+2. Testing each address to see if it's running Bitcoin Core
+3. Keeping track of everything in a local database
 
 This project focuses on practical discovery and tracking of Bitcoin nodes reachable over CJDNS networking. 
 
@@ -160,7 +157,7 @@ CJDNS addresses may not be as attractive to Bitcoin's addrman (address manager) 
 ### Discovery Sources
 
 1. **NodeStore** - Your local CJDNS routing table
-2. **Frontier Expansion** - Queries direct peers
+2. **Frontier Expansion** - Queries direct peers through cjdnstools
 3. **Bitcoin Addrman** - Addresses Bitcoin Core already knows about
 4. **Connected Peers** - Any address Core is currently connected to
 5. **Remote NodeStore** - Same as #1 but on other LAN machines (if configured)
@@ -292,9 +289,7 @@ sudo apt-get install sqlite3
 
 ---
 
-## Contributing
-
-This is a hobby project but I'm happy to accept pull requests! Feel free to:
+## This is a hobby project
 
 - Please post any questions, issues, reports, found addresses in [GitHub Discussions](https://github.com/mbhillrn/CJDNS-Bitcoin-Node-Address-Harvester/discussions)!
 
