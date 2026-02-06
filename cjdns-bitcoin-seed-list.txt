@@ -1,4 +1,4 @@
-As of: 2026-01-25
+As of: 2026-02-05
 
 KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
 == CONFIRMED BITCOIN NODES (confirmed.host) ==
@@ -18,10 +18,12 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc70:704d:b268:cdbf:d622:ea9f:db12:859e
   fc71:12bd:f5e7:71b1:5b4e:04e3:6228:0ac0
   fc73:b851:bc16:edca:e744:87f9:0e1f:d823
+  fc76:aa12:93b1:c4ff:7b4b:58b5:027f:a37d
   fc77:89c1:cb33:b770:f92c:1eff:a60a:b1cb
   fc89:1969:a936:9d23:6f91:7ea5:a681:cfae
   fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
   fca0:0151:79ac:8992:b51e:bdc4:6ed9:41be
+  fca4:ff2d:9bb9:c1cc:cd95:75d3:0429:624c
   fcac:ddc3:af4f:8d24:a374:5167:89c4:7845
   fcb5:bd5a:dbc6:0f0d:8dee:8dff:6111:350e
   fcc7:be49:ccd1:dc91:3125:f0da:457d:08ce
@@ -39,6 +41,7 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc02:35c0:d8ad:7498:b8d3:0a53:bfdd:5a3f
   fc04:2d99:c2d2:942a:655a:1bb5:d8c1:2ba6
   fc05:88f3:f0be:b0f3:6de9:df73:c855:73cb
+  fc05:b219:0a84:e2f5:be81:cff0:30f9:5a3c
   fc05:c3f7:64ca:47b2:1f49:0055:16f4:694f
   fc05:eca9:0d81:29fa:4cd6:4d84:0c1c:6549
   fc06:6820:ad2c:e124:a8f4:84d7:340a:f9e1
@@ -68,8 +71,10 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc19:3b0d:e2c1:cfa7:9b3c:b635:1c61:b7ce
   fc1a:1dbd:3ee2:ab6c:febc:370c:efa0:710d
   fc1a:e0b5:5cc5:1935:8968:0e33:dfce:8d96
+  fc1b:001d:122b:9864:7b9b:940b:a146:89c7
   fc1b:a99e:1518:1fc2:6768:9fab:7b8f:652e
   fc1c:9f0c:dad6:d5d9:af5e:2b71:220d:d0ea
+  fc1c:bb5f:b26a:0039:83e7:946d:a482:23bc
   fc1e:06e6:faf4:2683:bf3e:58fb:d867:b015
   fc1e:f165:e271:d2ad:a31a:78c9:6a54:8336
   fc1f:22c3:95dc:a3af:4a93:8251:beb9:1858
@@ -79,10 +84,12 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc22:000b:e833:905e:c79d:029d:5e3b:2a05
   fc22:8d05:42cb:9005:5ef1:573c:e61b:8004
   fc23:1a17:aa4c:30e8:7370:0b7a:320c:48eb
+  fc23:1b0c:3558:9a5d:bc02:c2af:f9de:1282
   fc24:3e5a:05ef:4fc1:2d32:c149:b1c4:8d89
   fc24:74f9:1c8f:684b:c5ff:2828:38f2:6c35
   fc24:766d:476d:f0ec:d13f:4af0:3394:2b3f
   fc24:9d0a:7813:3e0e:1007:ca3e:ccb4:71f3
+  fc25:fd19:d83f:3a8c:f9fe:eccc:c41b:91f1
   fc27:ba4e:9050:b5e4:4404:24f4:4733:058e
   fc2a:1fa2:910a:7f69:1269:3b0b:e860:6c24
   fc2a:ca1b:89a0:8c06:e050:eeb9:c845:31c1
@@ -116,9 +123,11 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc46:9485:34ec:a17d:4d9e:789d:e57a:22fc
   fc48:56da:1bb7:118e:f96b:3e9b:9a2a:8e0f
   fc48:575d:b3af:c716:6d2c:01ba:1570:ac44
+  fc49:e7a8:23cf:bc7c:bbcd:8130:66fc:7f57
   fc4a:7b20:7a67:e34d:8742:5fa7:e970:cb72
   fc4b:0e61:dcca:b077:52e0:2b03:b2d6:164e
   fc4b:7a73:6c7a:f8a9:2bf0:9e0e:de29:d8f5
+  fc4c:48b8:a120:559d:f88d:3b20:2d8f:07c4
   fc4d:80d9:fc4a:2688:bbc7:ce80:405e:21b6
   fc4e:addf:ef39:1ebf:4865:fc64:d5b7:f994
   fc4e:e26d:b19c:43ca:a36d:e2d1:de93:f785
@@ -157,6 +166,7 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc64:eeda:4ff4:bc0b:0a7a:343b:b9f6:41ed
   fc65:54b7:52a5:76b4:e8bf:f191:4206:f40a
   fc65:8359:a24b:5deb:802f:d452:6f84:f18b
+  fc66:7fd8:760d:ed39:d641:9924:ff68:5815
   fc68:8abc:50c6:2c60:a4c5:819a:5ba9:5ddd
   fc68:9c6c:ef78:068f:2c96:070d:698f:8494
   fc68:cd50:99ac:5ae2:694c:58ab:a379:3b2e
@@ -176,9 +186,11 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc71:fa3a:414d:fe82:f465:369b:141a:0f8c
   fc73:474c:7d0d:89be:a3ff:eb4d:1854:63b7
   fc73:b851:bc16:edca:e744:87f9:0e1f:d823
+  fc76:aa12:93b1:c4ff:7b4b:58b5:027f:a37d
   fc77:38f3:3db3:3526:78a4:6936:30c8:cfca
   fc77:89c1:cb33:b770:f92c:1eff:a60a:b1cb
   fc77:9146:24d5:ae7b:da33:4680:58a2:fcf9
+  fc77:b16c:4fd1:a2af:cac6:c8eb:8dfa:f38d
   fc77:e123:58f5:d94c:bb12:7aaa:f6b5:689f
   fc78:6e1f:1f8c:b70a:a794:c122:078b:e5c3
   fc79:66a5:ce09:e944:1354:e087:13ab:f36f
@@ -218,6 +230,7 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fc94:3e2b:557f:d11e:0f63:999f:4f32:ae80
   fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
   fc96:a2a5:5a07:9eae:5f02:0a5c:e50e:c465
+  fc97:02ce:8a9c:8824:c6dc:97aa:c254:9a36
   fc97:1cad:36e1:fdc7:fabf:73f4:a110:e27d
   fc98:19cd:a9ab:dfbc:38a4:6d74:bf83:19f7
   fc98:7148:0f9d:249a:9c91:989b:bf5c:ced8
@@ -237,6 +250,7 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fca2:8522:8775:07aa:c2b4:b501:511e:d9ed
   fca3:21d3:fc86:df63:e2ff:5995:1916:feca
   fca4:a220:4333:bc32:93d7:7e84:43be:9468
+  fca4:ff2d:9bb9:c1cc:cd95:75d3:0429:624c
   fca6:4c32:ae77:bfa4:da19:f048:e1e8:f3fc
   fca7:99cf:5a1a:3b72:c96d:5d28:0217:8e43
   fca9:20f9:b8b2:d7b5:752f:ae0f:0192:7acd
@@ -267,6 +281,7 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fcbd:1d65:ec23:83c2:a712:e4ab:a2bc:1104
   fcbd:7363:66ca:ed86:b2b3:a894:749f:9132
   fcbf:7da9:cb27:8a68:2e5c:855b:86a3:7abc
+  fcc0:1293:1766:b9cb:10ef:f0b5:3e34:e455
   fcc0:e739:22f3:2ff0:2d36:e918:33fd:e297
   fcc1:6764:1a8c:69f2:64b0:957a:af88:7460
   fcc2:325c:2fa9:1843:84b5:207c:a50c:e18d
@@ -286,6 +301,7 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fccf:f4cc:c411:cc6c:33b2:13f4:b9b5:5b38
   fcd0:7a7f:3d4a:2a76:a99b:7937:206e:571a
   fcd0:8ac0:91f2:2846:7b40:7eff:5e84:3839
+  fcd1:58e1:b730:1156:4771:2476:0e49:aa7f
   fcd1:9375:8e76:0546:0a8e:da15:1057:9992
   fcd1:b45d:127f:ea9b:4e00:7785:8c87:c837
   fcd1:c209:bc03:1a75:80d8:2838:a1f1:48c4
@@ -302,9 +318,11 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fcdb:c4c4:0cef:05ea:6be5:9745:eaef:ebf0
   fcdc:8bfc:5326:d5d5:ce4f:0e11:8529:7a2c
   fcdd:4f38:dd2e:c4b5:b62e:d47a:8166:ddf6
+  fcdd:71c9:61dd:0f54:9b16:1490:7984:224e
   fcdd:f2ee:f3d2:28ad:43e0:8baa:d16d:5d3a
   fcde:5b9e:fe85:5af7:5368:6dff:729d:f859
   fcde:7b9c:1fb1:8152:47f4:c92e:9de8:9efb
+  fce0:3ee7:cf72:492c:2358:70d4:78bf:9bfa
   fce1:022b:a5ce:4693:f48f:259e:2448:3d82
   fce1:2a4e:2214:22c1:f0fe:59af:e6b8:b8ab
   fce3:0f2a:db44:b724:f67e:a694:774b:2a8b
@@ -332,6 +350,7 @@ KNOWN: CJDNS fc** fc00 addresses with bitcoin nodes
   fcf4:b6f3:6605:71b7:fd85:dac0:1e24:7456
   fcf4:e309:14b5:5498:cafd:4f59:4b9c:7f84
   fcf6:773c:5cd1:3b29:ce78:bc5d:66cd:0dc1
+  fcf8:8419:9d04:c3af:394d:b773:3aac:3acd
   fcf8:c626:6017:7a13:a0ff:9e05:0784:22f8
   fcf8:f982:c21f:5f3e:f1ec:f5ff:1187:dc77
   fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9
